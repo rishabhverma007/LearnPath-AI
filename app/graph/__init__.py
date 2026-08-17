@@ -1,0 +1,1 @@
+"""Skill knowledge graph package."""

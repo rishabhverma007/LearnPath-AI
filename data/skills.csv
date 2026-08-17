@@ -1,0 +1,63 @@
+skill_id,name,category,difficulty,description,prerequisites,related_skills
+python,Python Programming,Programming,1,"Core Python: syntax, data structures, functions, OOP, file I/O, standard library. The foundation for data work and automation.",,git;numpy;pandas
+git,Version Control with Git,Engineering,1,"Track changes, branch, merge, collaborate. Essential hygiene for any technical role.",,cicd
+html_css,HTML & CSS,Web,1,"Structure and style web pages: semantic HTML, flexbox, grid, responsive design.",,javascript
+javascript,JavaScript,Web,2,"Modern JavaScript: ES6+, DOM, async programming, fetch.",html_css,typescript;react;node
+typescript,TypeScript,Web,3,"Static typing on top of JavaScript for safer, scalable frontend code.",javascript,react
+react,React,Web,3,"Component-based UI development with React: hooks, state, routing, data fetching.",javascript,typescript
+node,Node.js & Backend,Programming,3,"Server-side JavaScript: Express, middleware, REST endpoints, auth basics.",javascript,rest_apis
+rest_apis,REST API Design,Engineering,3,"Designing clean HTTP APIs: resources, status codes, versioning, documentation.",python,fastapi;system_design
+testing,Software Testing,Engineering,3,"Unit and integration testing, TDD mindset, test doubles.",python,cicd
+linux,Linux Fundamentals,Engineering,1,"Filesystem, permissions, processes, package management, common CLI tools.",,bash;docker
+bash,Shell Scripting,Engineering,2,"Automate tasks with bash scripts: variables, loops, pipes, cron.",linux,cicd
+sql,SQL & Databases,Data,2,"Write queries: SELECT, joins, aggregation, subqueries, indexing basics.",,databases;data_cleaning
+databases,Database Design & Management,Data,2,"Relational modeling, normalization, transactions, and query optimization.",sql,system_design
+system_design,System Design,Engineering,4,"Design scalable systems: load balancing, caching, queues, sharding, trade-offs.",databases;rest_apis,cloud_arch
+docker,Docker & Containers,Engineering,3,"Containerize applications: images, Dockerfiles, volumes, compose, registries.",linux,kubernetes;mlops;cicd
+kubernetes,Kubernetes,Cloud,4,"Orchestrate containers: pods, deployments, services, ingress, helm.",docker;cloud,cicd;site_reliability
+cicd,CI/CD Pipelines,Engineering,3,"Automate build, test, and deploy pipelines: GitHub Actions, GitLab CI.",git;docker,kubernetes
+terraform,Infrastructure as Code,Cloud,3,"Declarative cloud provisioning with Terraform: modules, state, workspaces.",cloud,aws;cloud_arch
+fastapi,FastAPI & APIs,Programming,3,"Build modern Python APIs: pydantic models, async, OpenAPI docs, deployment.",python,rest_apis;mlops
+numpy,NumPy,Data,2,"Vectorized numerical computing: arrays, broadcasting, linear algebra ops.",python,pandas;linalg
+pandas,Pandas,Data,2,"DataFrames for analysis: filtering, groupby, joins, pivots, time series.",python,numpy;data_cleaning
+data_viz,Data Visualization,Data,2,"Communicate with charts: matplotlib, seaborn, plotly; chart choice and design.",pandas,data_storytelling;powerbi
+statistics,Statistics,Math,2,"Descriptive stats, distributions, hypothesis testing, confidence intervals.",python,probability;ml_fundamentals
+probability,Probability,Math,2,"Random variables, distributions, Bayes' theorem, expected value.",python,statistics;linalg
+linalg,Linear Algebra,Math,3,"Vectors, matrices, eigenvalues, SVD — the math under ML models.",python,numpy;deep_learning
+data_cleaning,Data Cleaning & Wrangling,Data,2,"Handle missing values, outliers, inconsistent formats, and messy real data.",pandas,feature_engineering
+big_data,Big Data (Spark),Data,4,"Distributed data processing with Spark: RDDs, DataFrames, cluster basics.",sql;pandas,data_cleaning
+excel,Excel & Spreadsheets,Data,1,"Spreadsheet analysis: formulas, pivot tables, lookups, charts.",,sql;data_viz
+powerbi,Power BI & Dashboards,Data,3,"Build interactive dashboards: data modeling, DAX, report design.",data_viz;sql,data_storytelling
+data_storytelling,Data Storytelling,Data,3,"Turn analysis into insight: narrative structure, executive communication.",data_viz,powerbi
+ml_fundamentals,Machine Learning Fundamentals,AI/ML,3,"Core ML concepts: supervised/unsupervised learning, train/test splits, bias-variance.",python;statistics;pandas,regression;classification;model_evaluation
+regression,Regression Modeling,AI/ML,3,"Linear and logistic regression, regularization, evaluation for continuous targets.",ml_fundamentals;statistics,feature_engineering
+classification,Classification Modeling,AI/ML,3,"Classification algorithms, class imbalance, ROC/AUC, decision boundaries.",ml_fundamentals;statistics,ensemble;model_evaluation
+model_evaluation,Model Evaluation & Validation,AI/ML,3,"Cross-validation, metrics selection, overfitting detection, model comparison.",ml_fundamentals,feature_engineering;ml_system_design
+feature_engineering,Feature Engineering,AI/ML,3,"Create and select features: encoding, scaling, transformations, feature stores.",pandas;ml_fundamentals,model_evaluation
+ensemble,Ensemble Learning,AI/ML,4,"Random forests, boosting, bagging, stacking to push model quality.",classification;model_evaluation,ml_system_design
+clustering,Clustering & Dimensionality Reduction,AI/ML,4,"Unsupervised learning: k-means, DBSCAN, PCA, embeddings, interpretation.",ml_fundamentals;statistics,recommender_systems
+experimentation,A/B Testing & Experimentation,AI/ML,4,"Design and analyze experiments: sample size, significance, guardrails.",statistics;ml_fundamentals,data_storytelling
+nlp,Natural Language Processing,AI/ML,4,"Text processing, embeddings, sequence models, and language understanding.",ml_fundamentals;python,transform_models
+deep_learning,Deep Learning,AI/ML,4,"Neural networks: backprop, optimizers, regularization, training at scale.",ml_fundamentals;numpy;statistics,cnn;transform_models
+cnn,Convolutional Neural Networks,AI/ML,4,"CNNs for vision: convolutions, pooling, transfer learning, augmentations.",deep_learning,transform_models
+transform_models,Transformers & LLMs,AI/ML,5,"Transformer architecture, attention, fine-tuning, RAG, prompt engineering.",deep_learning;nlp,mlops
+ml_system_design,ML System Design,Engineering,4,"Design ML systems end-to-end: data pipelines, serving, scaling, trade-offs.",ml_fundamentals;model_evaluation,mlops
+mlops,MLOps & Deployment,AI/ML,4,"Ship models to production: packaging, CI/CD for ML, registries, serving.",docker;fastapi;ml_system_design,monitoring;cloud
+monitoring,Model Monitoring,AI/ML,4,"Detect drift, track performance in production, alerting, retraining loops.",mlops,site_reliability
+recommender_systems,Recommender Systems,AI/ML,4,"Collaborative filtering, content-based recs, ranking, cold-start problems.",ml_fundamentals;model_evaluation,clustering
+networking,Networking Fundamentals,Cybersecurity,1,"OSI model, TCP/IP, DNS, DHCP, subnetting, common protocols.",,security_fundamentals;cloud
+security_fundamentals,Cybersecurity Fundamentals,Cybersecurity,2,"Threats, CIA triad, risk basics, defense-in-depth, security domains.",networking;linux,network_security;web_security
+network_security,Network Security,Cybersecurity,3,"Firewalls, IDS/IPS, VPNs, segmentation, secure protocols.",security_fundamentals,pen_testing;siem
+web_security,Web Application Security,Cybersecurity,3,"OWASP Top 10: injection, XSS, CSRF, auth flaws, secure coding.",security_fundamentals,pen_testing
+cryptography,Cryptography,Cybersecurity,3,"Encryption, hashing, digital signatures, PKI, TLS basics.",security_fundamentals,cloud_security
+threat_intel,Threat Intelligence,Cybersecurity,3,"Threat actors, TTPs, IOC hunting, frameworks like MITRE ATT&CK.",security_fundamentals,incident_response
+siem,SIEM & Log Analysis,Cybersecurity,3,"Collect and analyze logs, correlation rules, alert triage.",security_fundamentals,soc;incident_response
+pen_testing,Penetration Testing,Cybersecurity,4,"Recon, exploitation, privilege escalation, reporting within scope.",network_security;web_security,security_automation
+incident_response,Incident Response,Cybersecurity,4,"Detection, containment, eradication, recovery, and lessons learned.",siem,soc
+soc,SOC Operations,Cybersecurity,3,"Monitor, triage, escalate security alerts; runbooks and shift ops.",siem,incident_response
+security_automation,Security Automation,Cybersecurity,4,"Script security workflows: parsing logs, automating scans, orchestration.",pen_testing;python,siem
+cloud_security,Cloud Security,Cybersecurity,4,"IAM, shared responsibility, cloud-native threats, compliance in cloud.",security_fundamentals;cloud,aws
+cloud,Cloud Fundamentals,Cloud,2,"Cloud concepts: IaaS/PaaS/SaaS, regions, pricing, shared responsibility.",linux;networking,aws;cloud_arch
+aws,AWS Core Services,Cloud,3,"EC2, S3, VPC, IAM, Lambda, RDS: build on AWS.",cloud,cloud_arch;cloud_security
+cloud_arch,Cloud Architecture,Cloud,4,"Design resilient, cost-effective cloud architectures; Well-Architected review.",aws,site_reliability;terraform
+site_reliability,Site Reliability Engineering,Cloud,4,"SLIs/SLOs, incident management, observability, capacity planning.",cloud_arch;cicd,monitoring

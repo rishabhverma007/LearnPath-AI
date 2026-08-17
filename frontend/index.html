@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LearnPath AI — Your Adaptive Learning Journey</title>
+  <meta name="description" content="An AI mentor that understands where you are, where you want to go, and keeps figuring out the best path to get you there." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/styles.css?v=7" />
+</head>
+<body>
+  <!-- live motion layers -->
+  <canvas id="universe" aria-hidden="true"></canvas>
+  <div class="grain" aria-hidden="true"></div>
+  <div class="vignette" aria-hidden="true"></div>
+  <div id="cursor" aria-hidden="true"><div class="cursor-dot"></div><div class="cursor-ring"></div></div>
+  <div id="curtain" aria-hidden="true"></div>
+
+  <!-- top navigation -->
+  <header class="topnav" id="topnav">
+    <div class="nav-brand" data-action="goto" data-page="landing" role="button" tabindex="0">
+      <div class="brand-logo">LP</div>
+      <div class="brand-text">
+        <div class="brand-name">LearnPath AI</div>
+        <div class="brand-tag">Your goal · Your skills · Your adaptive journey</div>
+      </div>
+    </div>
+    <nav class="topnav-links" id="nav" aria-label="Primary"></nav>
+    <div class="topnav-right">
+      <span class="mode-pill" id="mode-pill">local engine</span>
+      <div class="learner-chip" id="learner-chip" hidden></div>
+      <button class="ghost-btn" data-action="new-demo" hidden id="new-demo-btn" title="Start a fresh demo learner">↺</button>
+      <button class="menu-toggle" data-action="toggle-menu" aria-label="Menu">☰</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="crumb" id="crumb">LearnPath AI</div>
+    <div id="view" class="view"></div>
+    <footer class="footer">
+      <span>LearnPath AI — not a course recommender. An adaptive learning companion.</span>
+      <span class="faint">HCLAmplified Round 2 · hybrid AI · skill graph + ranking</span>
+    </footer>
+  </main>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="/static/js/api.js?v=6"></script>
+  <script src="/static/js/motion.js?v=6"></script>
+  <script src="/static/js/ui.js?v=6"></script>
+  <script src="/static/js/pages.js?v=8"></script>
+  <script src="/static/js/app.js?v=7"></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+role_id,title,domain,summary
+ml_engineer,Machine Learning Engineer,AI/ML,"Designs, trains, evaluates, and ships machine learning models into production systems."
+ai_engineer,AI Engineer,AI/ML,"Builds AI products: applies LLMs, NLP and deep learning to real applications with responsible practices."
+data_scientist,Data Scientist,Data Science,"Turns raw data into insight and predictive models; owns experimentation and measurement."
+data_analyst,Data Analyst,Data Analytics,"Queries, cleans, and visualizes data to answer business questions and drive decisions."
+cybersecurity_analyst,Cybersecurity Analyst,Cybersecurity,"Monitors, detects, and responds to security threats; triages alerts and hardens systems."
+penetration_tester,Penetration Tester,Cybersecurity,"Finds and exploits vulnerabilities ethically to improve an organization's security posture."
+cloud_engineer,Cloud Engineer,Cloud,"Designs and operates cloud infrastructure: architecture, automation, cost and reliability."
+devops_engineer,DevOps Engineer,Cloud,"Automates software delivery and operations: CI/CD, containers, observability, reliability."
+software_engineer,Software Engineer,Software Development,"Builds reliable, testable software systems end-to-end: design, code, review, ship."
+web_developer,Web Developer,Web Development,"Builds responsive, accessible web applications from design to deployment."

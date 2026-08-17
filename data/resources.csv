@@ -1,0 +1,32 @@
+resource_id,title,type,skill_id,url,description,duration_min,tags
+r_crossval,Cross-Validation Explained,article,model_evaluation,https://scikit-learn.org/stable/modules/cross_validation.html,"Read how cross-validation works, why it matters, and how to apply it in scikit-learn.",15,ml;reference
+r_biasvariance,Bias-Variance Tradeoff,article,ml_fundamentals,https://scikit-learn.org/stable/auto_examples/underfitting_overfitting.html,"Understand the core ML trade-off that explains overfitting and underfitting.",10,ml;concept
+r_pandas_cheatsheet,Pandas Reference,cheatsheet,pandas,https://pandas.pydata.org/docs/user_guide/index.html,"Quick lookup for the most useful pandas operations.",20,data;cheatsheet
+r_numpy_cheatsheet,NumPy Cheatsheet,cheatsheet,numpy,https://numpy.org/doc/stable/user/absolute_beginners.html,"Vectorized operations, broadcasting, and array manipulation in one place.",20,data;cheatsheet
+r_python_cheatsheet,Python Basics Reference,cheatsheet,python,https://docs.python.org/3/tutorial/index.html,"Syntax, data structures, and idioms worth remembering.",30,programming;reference
+r_git_cheatsheet,Git Cheatsheet,cheatsheet,git,https://training.github.com/downloads/github-git-cheat-sheet.pdf,"Common git commands for everyday workflows.",10,engineering;cheatsheet
+r_sql_cheatsheet,SQL Cheatsheet,cheatsheet,sql,https://www.w3schools.com/sql/sql_quickref.asp,"The essential SQL statements for querying data.",10,data;cheatsheet
+r_docker_cheatsheet,Docker Cheatsheet,cheatsheet,docker,https://docs.docker.com/get-started/,"Dockerfile basics, images, volumes, and compose commands.",20,containers;reference
+r_fastapi_cheatsheet,FastAPI Quickstart,cheatsheet,fastapi,https://fastapi.tiangolo.com/tutorial/first-steps/,"Build your first FastAPI endpoint in minutes.",15,api;reference
+r_regression_metrics,Regression Metrics Guide,article,regression,https://scikit-learn.org/stable/modules/model_evaluation.html,"MAE, MSE, RMSE, R-squared: what each metric tells you.",25,ml;reference
+r_classification_metrics,Classification Metrics Guide,article,classification,https://scikit-learn.org/stable/modules/model_evaluation.html,"Accuracy, precision, recall, F1, ROC-AUC explained with trade-offs.",25,ml;reference
+r_feature_eng,Feature Engineering Playbook,article,feature_engineering,https://www.kaggle.com/learn/feature-engineering,"Techniques to create features that make models learn better.",20,ml;practice
+r_overfitting,Detecting Overfitting,article,model_evaluation,https://scikit-learn.org/stable/auto_examples/underfitting_overfitting.html,"Practical signals that your model is overfitting and what to do.",10,ml;concept
+r_gradient_descent,Gradient Descent Visualized,article,deep_learning,https://developers.google.com/machine-learning/crash-course/descent-and-momentum,"Build intuition for how gradient descent finds the minimum.",15,ml;concept
+r_llm_prompting,Prompt Engineering Guide,article,transform_models,https://www.promptingguide.ai/,"Core techniques for working effectively with LLMs.",30,llm;reference
+r_rag_overview,RAG Explained,article,transform_models,https://huggingface.co/learn/nlp-course/chapter5/1?fw=pt,"How retrieval-augmented generation combines search with generation.",20,llm;reference
+r_linux_cheatsheet,Linux Command Reference,cheatsheet,linux,https://linuxjourney.com/,"Essential commands for navigating and administering Linux.",15,engineering;reference
+r_aws_cheatsheet,AWS Core Services Map,article,aws,https://aws.amazon.com/getting-started/cloud-essentials/,"Which AWS service to use for compute, storage, and databases.",20,cloud;reference
+r_k8s_cheatsheet,Kubernetes Cheatsheet,cheatsheet,kubernetes,https://kubernetes.io/docs/reference/kubectl/cheatsheet/,"Pods, deployments, services, and kubectl commands at a glance.",15,cloud;cheatsheet
+r_terraform_basics,Terraform Basics,article,terraform,https://developer.hashicorp.com/terraform/tutorials,"Write your first Terraform configuration with providers and resources.",30,iac;reference
+r_cicd_actions,GitHub Actions Basics,article,cicd,https://docs.github.com/en/actions/quickstart,"Structure workflows, jobs, and steps for CI/CD.",15,cicd;reference
+r_threat_models,Threat Modeling Basics,article,security_fundamentals,https://owasp.org/www-community/Threat_Modeling,"A structured way to think about what could go wrong.",15,security;concept
+r_owasp_cheatsheets,OWASP Cheat Sheet Series,cheatsheet,web_security,https://cheatsheetseries.owasp.org/,"Definitive reference for secure development practices.",20,security;cheatsheet
+r_mitre_attck,MITRE ATT&CK Navigator,tool,threat_intel,https://mitre-attack.github.io/attack-navigator/,"Visualize adversary techniques and map detections.",15,security;tool
+r_splunk_search,Splunk Search Tutorial,article,siem,https://docs.splunk.com/Documentation/Splunk/latest/SearchTutorial/WelcometotheSearchTutorial,"Learn SPL search commands to analyze logs.",30,security;reference
+r_3b1b_nn,3Blue1Brown: Neural Networks,video,deep_learning,https://www.youtube.com/playlist?list=PLZHQObOWTQDNU6R1_67000Dx_ZCJB-3pi,"Visual intuition for how neural networks learn.",20,ml;video
+r_statquest_cv,StatQuest: Cross Validation,video,model_evaluation,https://www.youtube.com/playlist?list=PLblh5JKOoLUICTaGLRoHQDuF_7q2GfuJF,"Cross-validation explained clearly in a short video.",15,ml;video
+r_mlops_playbook,MLOps Fundamentals,article,mlops,https://madewithml.com/,"The core practices for shipping and maintaining ML models.",30,mlops;reference
+r_react_cheatsheet,React Quick Reference,cheatsheet,react,https://react.dev/learn,"Hooks, state, and component patterns in one page.",20,web;reference
+r_js_cheatsheet,JavaScript Essentials,cheatsheet,javascript,https://javascript.info/,"Modern JS syntax and patterns you will actually use.",20,web;reference
+r_networking_basics,How the Internet Works,article,networking,https://www.cloudflare.com/learning/network-layer/how-does-the-internet-work/,"A clear, short introduction to IP, packets, routing and DNS.",15,networking;reference

@@ -1,0 +1,817 @@
+{
+  "assessments": [
+    {
+      "assessment_id": "a_ml_fundamentals",
+      "skill_id": "ml_fundamentals",
+      "title": "Machine Learning Fundamentals",
+      "description": "Core concepts: supervised learning, splits, overfitting, and evaluation.",
+      "difficulty": 2,
+      "concepts": ["train_test_split", "overfitting", "bias_variance", "metrics"],
+      "questions": [
+        {
+          "id": "q1",
+          "concept": "train_test_split",
+          "type": "mcq",
+          "question": "Why do we hold out a test set that the model never trains on?",
+          "options": [
+            "To speed up training time",
+            "To estimate performance on unseen data",
+            "To increase the number of features",
+            "To satisfy framework requirements"
+          ],
+          "answer": 1,
+          "explanation": "A held-out test set gives an unbiased estimate of how the model generalizes to new data."
+        },
+        {
+          "id": "q2",
+          "concept": "overfitting",
+          "type": "mcq",
+          "question": "A model gets 99% accuracy on training data but 62% on the test set. This is a classic sign of:",
+          "options": ["Underfitting", "Overfitting", "Data leakage", "Class imbalance"],
+          "answer": 1,
+          "explanation": "A large train-vs-test gap indicates the model memorized the training data instead of learning general patterns."
+        },
+        {
+          "id": "q3",
+          "concept": "bias_variance",
+          "type": "mcq",
+          "question": "A very simple model that consistently misses important patterns has:",
+          "options": ["High bias, low variance", "Low bias, high variance", "High bias, high variance", "Low bias, low variance"],
+          "answer": 0,
+          "explanation": "High bias means the model is too simple to capture the underlying relationship."
+        },
+        {
+          "id": "q4",
+          "concept": "metrics",
+          "type": "mcq",
+          "question": "For a heavily imbalanced classification problem (99% class A, 1% class B), why is accuracy misleading?",
+          "options": [
+            "Accuracy is always wrong for classification",
+            "A model predicting only class A still gets 99% accuracy while learning nothing about class B",
+            "Accuracy only works for regression",
+            "Accuracy cannot be computed with more than two classes"
+          ],
+          "answer": 1,
+          "explanation": "Accuracy on imbalanced data rewards trivial majority-class predictions; precision/recall or AUC are more informative."
+        }
+      ]
+    },
+    {
+      "assessment_id": "a_classification",
+      "skill_id": "classification",
+      "title": "Classification Modeling",
+      "description": "Metrics, thresholds, imbalance, and decision boundaries.",
+      "difficulty": 3,
+      "concepts": ["precision_recall", "roc_auc", "imbalance", "decision_boundary"],
+      "questions": [
+        {
+          "id": "q1",
+          "concept": "precision_recall",
+          "type": "mcq",
+          "question": "Precision measures:",
+          "options": [
+            "Of all actual positives, how many were predicted correctly",
+            "Of all predicted positives, how many are actually positive",
+            "The fraction of all data predicted positive",
+            "The fraction of negatives correctly rejected"
+          ],
+          "answer": 1,
+          "explanation": "Precision = TP / (TP + FP). It answers: when we predict positive, how often are we right?"
+        },
+        {
+          "id": "q2",
+          "concept": "roc_auc",
+          "type": "mcq",
+          "question": "An ROC-AUC of 0.5 means the model:",
+          "options": [
+            "Is perfect",
+            "Performs no better than random guessing",
+            "Always predicts the negative class",
+            "Has zero false positives"
+          ],
+          "answer": 1,
+          "explanation": "AUC = 0.5 corresponds to random ranking of positive vs negative instances."
+        },
+        {
+          "id": "q3",
+          "concept": "imbalance",
+          "type": "multi",
+          "question": "Select techniques that help with class imbalance:",
+          "options": [
+            "Resampling (oversampling minority / undersampling majority)",
+            "Using class weights in the loss function",
+            "Deleting all data from the minority class",
+            "Reporting precision, recall, and F1 instead of raw accuracy"
+          ],
+          "answer": [0, 1, 3],
+          "explanation": "Resampling, class weights, and better metrics all address imbalance; deleting minority data destroys information."
+        },
+        {
+          "id": "q4",
+          "concept": "decision_boundary",
+          "type": "scenario",
+          "question": "A logistic regression on two features produces a straight decision boundary. The data is clearly separated by a circle. What is the best first step?",
+          "options": [
+            "Add polynomial feature combinations (e.g., x1^2, x1*x2)",
+            "Collect more of the same data",
+            "Switch to a neural network with 50 layers immediately",
+            "Increase the learning rate"
+          ],
+          "answer": 0,
+          "explanation": "Adding nonlinear feature transformations lets a linear model fit nonlinear boundaries — a simple, interpretable fix."
+        }
+      ]
+    },
+    {
+      "assessment_id": "a_regression",
+      "skill_id": "regression",
+      "title": "Regression Modeling",
+      "description": "Loss functions, regularization, and interpretation.",
+      "difficulty": 3,
+      "concepts": ["loss", "regularization", "interpretation", "evaluation"],
+      "questions": [
+        {
+          "id": "q1",
+          "concept": "loss",
+          "type": "mcq",
+          "question": "RMSE penalizes large errors more heavily than MAE because:",
+          "options": [
+            "It uses absolute values",
+            "It squares errors before averaging, amplifying outliers",
+            "It ignores outliers entirely",
+            "It measures classification mistakes"
+          ],
+          "answer": 1,
+          "explanation": "Squaring errors gives disproportionate weight to large residuals, making RMSE sensitive to outliers."
+        },
+        {
+          "id": "q2",
+          "concept": "regularization",
+          "type": "mcq",
+          "question": "Ridge (L2) regularization helps by:",
+          "options": [
+            "Adding a penalty on the sum of squared coefficients to shrink them",
+            "Removing features randomly",
+            "Increasing model capacity",
+            "Speeding up data loading"
+          ],
+          "answer": 0,
+          "explanation": "L2 penalty shrinks coefficients toward zero, reducing variance and overfitting."
+        },
+        {
+          "id": "q3",
+          "concept": "interpretation",
+          "type": "mcq",
+          "question": "For a linear regression y = 50 + 3·x, the coefficient 3 means:",
+          "options": [
+            "y equals 3 when x is 50",
+            "A one-unit increase in x is associated with a 3-unit increase in y, all else equal",
+            "x explains exactly 3% of the variance",
+            "The model has 3 features"
+          ],
+          "answer": 1,
+          "explanation": "The coefficient is the expected change in the target per unit change in the predictor, holding others fixed."
+        },
+        {
+          "id": "q4",
+          "concept": "evaluation",
+          "type": "mcq",
+          "question": "R² = 0.9 for a regression model means:",
+          "options": [
+            "90% of the data is correct",
+            "The model explains 90% of the variance in the target",
+            "The model is 90% overfit",
+            "Predictions are within 10% of true values"
+          ],
+          "answer": 1,
+          "explanation": "R² measures the proportion of target variance explained by the model relative to the mean baseline."
+        }
+      ]
+    },
+    {
+      "assessment_id": "a_deep_learning",
+      "skill_id": "deep_learning",
+      "title": "Deep Learning",
+      "description": "Backpropagation, activations, optimizers, and training dynamics.",
+      "difficulty": 4,
+      "concepts": ["backprop", "activation", "optimizer", "regularization"],
+      "questions": [
+        {
+          "id": "q1",
+          "concept": "backprop",
+          "type": "mcq",
+          "question": "Backpropagation computes:",
+          "options": [
+            "The gradient of the loss with respect to every weight via the chain rule",
+            "The forward pass output only",
+            "A random weight update",
+            "The validation accuracy"
+          ],
+          "answer": 0,
+          "explanation": "Backprop efficiently propagates loss gradients backward through the network using the chain rule."
+        },
+        {
+          "id": "q2",
+          "concept": "activation",
+          "type": "mcq",
+          "question": "Why is ReLU preferred over sigmoid in hidden layers of deep networks?",
+          "options": [
+            "It is cheaper and avoids vanishing gradients for positive inputs",
+            "It is bounded between 0 and 1 by design",
+            "It guarantees convergence in one epoch",
+            "It removes the need for a loss function"
+          ],
+          "answer": 0,
+          "explanation": "ReLU's linear slope for positive inputs keeps gradients flowing, avoiding the saturation of sigmoid/tanh."
+        },
+        {
+          "id": "q3",
+          "concept": "optimizer",
+          "type": "mcq",
+          "question": "A learning rate that is too high typically causes:",
+          "options": [
+            "Oscillation or divergence of the loss",
+            "Slower but stable training",
+            "Zero gradients",
+            "Overflow in the dataset file"
+          ],
+          "answer": 0,
+          "explanation": "Large steps can overshoot minima, causing the loss to oscillate or explode."
+        },
+        {
+          "id": "q4",
+          "concept": "regularization",
+          "type": "multi",
+          "question": "Select techniques used to reduce overfitting in neural networks:",
+          "options": [
+            "Dropout",
+            "Data augmentation",
+            "Early stopping on validation loss",
+            "Removing the validation set"
+          ],
+          "answer": [0, 1, 2],
+          "explanation": "Dropout, augmentation, and early stopping all regularize; removing validation data hides overfitting instead of fixing it."
+        }
+      ]
+    },
+    {
+      "assessment_id": "a_statistics",
+      "skill_id": "statistics",
+      "title": "Statistics",
+      "description": "Distributions, hypothesis testing, p-values, correlation.",
+      "difficulty": 2,
+      "concepts": ["distributions", "hypothesis_testing", "p_value", "correlation"],
+      "questions": [
+        {
+          "id": "q1",
+          "concept": "distributions",
+          "type": "mcq",
+          "question": "The Central Limit Theorem says that:",
+          "options": [
+            "The distribution of sample means approaches a normal distribution as sample size grows",
+            "All raw data is normally distributed",
+            "The median always equals the mean",
+            "Variance is always 1"
+          ],
+          "answer": 0,
+          "explanation": "Averages of many independent samples become approximately normal regardless of the underlying distribution."
+        },
+        {
+          "id": "q2",
+          "concept": "p_value",
+          "type": "mcq",
+          "question": "A p-value of 0.03 in a hypothesis test means:",
+          "options": [
+            "There is a 3% chance the null hypothesis is true",
+            "Under the null hypothesis, results this extreme occur 3% of the time",
+            "The effect size is 3%",
+            "The test is 97% accurate"
+          ],
+          "answer": 1,
+          "explanation": "The p-value is the probability of observing data this extreme assuming the null hypothesis is true."
+        },
+        {
+          "id": "q3",
+          "concept": "correlation",
+          "type": "mcq",
+          "question": "A correlation of 0.9 between X and Y implies:",
+          "options": [
+            "X causes Y",
+            "A strong linear association, but causation is not established",
+            "Y causes X",
+            "The variables are independent"
+          ],
+          "answer": 1,
+          "explanation": "Correlation measures association, not causation; confounding variables may explain the link."
+        },
+        {
+          "id": "q4",
+          "concept": "hypothesis_testing",
+          "type": "scenario",
+          "question": "You compare two website designs and want to know if the conversion difference is real. Which approach is most appropriate?",
+          "options": [
+            "Run an A/B test and compute a confidence interval for the conversion difference",
+            "Pick the design with the higher raw conversion after one hour",
+            "Ask five colleagues which design they prefer",
+            "Assume the difference is real if it is bigger than 1%"
+          ],
+          "answer": 0,
+          "explanation": "A properly powered experiment with confidence intervals accounts for sampling variability."
+        }
+      ]
+    },
+    {
+      "assessment_id": "a_python",
+      "skill_id": "python",
+      "title": "Python Programming",
+      "description": "Data structures, functions, comprehensions, OOP.",
+      "difficulty": 1,
+      "concepts": ["data_structures", "functions", "comprehensions", "oop"],
+      "questions": [
+        {
+          "id": "q1",
+          "concept": "data_structures",
+          "type": "mcq",
+          "question": "Which data structure stores unique elements and has O(1) average membership checks?",
+          "options": ["List", "Set", "Tuple", "String"],
+          "answer": 1,
+          "explanation": "Sets are hash-based, giving fast membership tests and automatic deduplication."
+        },
+        {
+          "id": "q2",
+          "concept": "comprehensions",
+          "type": "coding",
+          "question": "What does [x*x for x in range(4)] produce?",
+          "options": ["[0, 1, 4, 9]", "[1, 2, 3, 4]", "[0, 1, 2, 3]", "[1, 4, 9, 16]"],
+          "answer": 0,
+          "explanation": "It squares each of 0, 1, 2, 3, yielding [0, 1, 4, 9]."
+        },
+        {
+          "id": "q3",
+          "concept": "functions",
+          "type": "mcq",
+          "question": "What does a function with 'return' missing at the end return?",
+          "options": ["None", "0", "False", "It raises an error"],
+          "answer": 0,
+          "explanation": "Python implicitly returns None when no return statement is reached."
+        },
+        {
+          "id": "q4",
+          "concept": "oop",
+          "type": "mcq",
+          "question": "The '__init__' method in a Python class is:",
+          "options": [
+            "The constructor-like initializer called when an instance is created",
+            "A destructor called on deletion",
+            "A static utility method",
+            "Required to be named 'self'"
+          ],
+          "answer": 0,
+          "explanation": "__init__ initializes instance attributes when the object is instantiated."
+        }
+      ]
+    },
+    {
+      "assessment_id": "a_pandas",
+      "skill_id": "pandas",
+      "title": "Pandas & Data Wrangling",
+      "description": "Filtering, grouping, joins, and missing data.",
+      "difficulty": 2,
+      "concepts": ["filtering", "groupby", "joins", "missing_data"],
+      "questions": [
+        {
+          "id": "q1",
+          "concept": "filtering",
+          "type": "coding",
+          "question": "Which expression selects rows where column 'age' is greater than 30?",
+          "options": [
+            "df[df['age'] > 30]",
+            "df['age' > 30]",
+            "df.loc['age' > 30]",
+            "df.filter('age', 30)"
+          ],
+          "answer": 0,
+          "explanation": "Boolean masking with df[boolean_series] filters rows."
+        },
+        {
+          "id": "q2",
+          "concept": "groupby",
+          "type": "mcq",
+          "question": "df.groupby('city')['sales'].mean() computes:",
+          "options": [
+            "Mean sales per city",
+            "Total sales across all cities",
+            "The city with the highest sales",
+            "A pivot table of sales by year"
+          ],
+          "answer": 0,
+          "explanation": "groupby splits by city, then mean() aggregates the sales column per group."
+        },
+        {
+          "id": "q3",
+          "concept": "missing_data",
+          "type": "mcq",
+          "question": "Which is generally the LEAST safe way to handle missing values?",
+          "options": [
+            "Imputing with the median when appropriate",
+            "Dropping the entire column because it has missing values",
+            "Using a model-based imputation",
+            "Adding an indicator for missingness"
+          ],
+          "answer": 1,
+          "explanation": "Dropping a whole column discards potentially valuable information; imputation or indicators are usually better."
+        },
+        {
+          "id": "q4",
+          "concept": "joins",
+          "type": "mcq",
+          "question": "An inner join between two DataFrames:",
+          "options": [
+            "Keeps rows with matching keys in both frames",
+            "Keeps all rows from the left frame",
+            "Keeps all rows from both frames",
+            "Drops duplicate columns automatically"
+          ],
+          "answer": 0,
+          "explanation": "Inner join returns only the intersection of keys between the two frames."
+        }
+      ]
+    },
+    {
+      "assessment_id": "a_sql",
+      "skill_id": "sql",
+      "title": "SQL",
+      "description": "Joins, aggregation, filtering, subqueries.",
+      "difficulty": 2,
+      "concepts": ["joins", "aggregation", "filtering", "subqueries"],
+      "questions": [
+        {
+          "id": "q1",
+          "concept": "joins",
+          "type": "mcq",
+          "question": "Which join returns all rows from the left table and matched rows from the right?",
+          "options": ["LEFT JOIN", "INNER JOIN", "RIGHT JOIN", "CROSS JOIN"],
+          "answer": 0,
+          "explanation": "LEFT JOIN keeps every row of the left table, filling NULLs where there is no match."
+        },
+        {
+          "id": "q2",
+          "concept": "aggregation",
+          "type": "mcq",
+          "question": "SELECT department, COUNT(*) FROM employees GROUP BY department; returns:",
+          "options": [
+            "Employee count per department",
+            "One row per employee",
+            "The total number of departments",
+            "Employees sorted by department"
+          ],
+          "answer": 0,
+          "explanation": "GROUP BY collapses rows into groups; COUNT(*) counts rows within each group."
+        },
+        {
+          "id": "q3",
+          "concept": "filtering",
+          "type": "mcq",
+          "question": "What is the difference between WHERE and HAVING?",
+          "options": [
+            "WHERE filters rows before grouping; HAVING filters groups after aggregation",
+            "They are interchangeable",
+            "WHERE works only on joins",
+            "HAVING filters individual rows"
+          ],
+          "answer": 0,
+          "explanation": "WHERE applies to raw rows; HAVING applies to aggregated results."
+        },
+        {
+          "id": "q4",
+          "concept": "subqueries",
+          "type": "mcq",
+          "question": "A correlated subquery:",
+          "options": [
+            "References columns from the outer query and runs per outer row",
+            "Runs once and caches the result",
+            "Cannot be used with WHERE",
+            "Always returns NULL"
+          ],
+          "answer": 0,
+          "explanation": "Correlated subqueries depend on the outer row, so they are evaluated per row."
+        }
+      ]
+    },
+    {
+      "assessment_id": "a_docker",
+      "skill_id": "docker",
+      "title": "Docker & Containers",
+      "description": "Images, Dockerfiles, volumes, compose.",
+      "difficulty": 3,
+      "concepts": ["images", "dockerfile", "volumes", "compose"],
+      "questions": [
+        {
+          "id": "q1",
+          "concept": "images",
+          "type": "mcq",
+          "question": "A Docker image is best described as:",
+          "options": [
+            "A read-only template used to create containers",
+            "A running process",
+            "A virtual machine snapshot",
+            "A log file"
+          ],
+          "answer": 0,
+          "explanation": "Images are immutable layers; containers are runnable instances of an image."
+        },
+        {
+          "id": "q2",
+          "concept": "dockerfile",
+          "type": "mcq",
+          "question": "In a Dockerfile, which instruction copies files from the build context into the image?",
+          "options": ["COPY", "RUN", "CMD", "EXPOSE"],
+          "answer": 0,
+          "explanation": "COPY (and ADD) copy local files into the image filesystem."
+        },
+        {
+          "id": "q3",
+          "concept": "volumes",
+          "type": "mcq",
+          "question": "Why use a Docker volume for a database container?",
+          "options": [
+            "To persist data beyond the container's lifecycle",
+            "To make the image smaller",
+            "To speed up the build",
+            "To expose ports to the internet"
+          ],
+          "answer": 0,
+          "explanation": "Containers are ephemeral; volumes keep data safe when containers are recreated."
+        },
+        {
+          "id": "q4",
+          "concept": "compose",
+          "type": "mcq",
+          "question": "Docker Compose is mainly used to:",
+          "options": [
+            "Define and run multi-container applications with one file",
+            "Build a single image faster",
+            "Scan images for vulnerabilities",
+            "Replace Kubernetes entirely"
+          ],
+          "answer": 0,
+          "explanation": "docker-compose.yml declares services, networks, and volumes for multi-container apps."
+        }
+      ]
+    },
+    {
+      "assessment_id": "a_security_fundamentals",
+      "skill_id": "security_fundamentals",
+      "title": "Cybersecurity Fundamentals",
+      "description": "CIA triad, threats, defense in depth, risk.",
+      "difficulty": 2,
+      "concepts": ["cia_triad", "threats", "defense_in_depth", "risk"],
+      "questions": [
+        {
+          "id": "q1",
+          "concept": "cia_triad",
+          "type": "mcq",
+          "question": "The 'A' in the CIA triad stands for:",
+          "options": ["Availability", "Authentication", "Authorization", "Auditing"],
+          "answer": 0,
+          "explanation": "Confidentiality, Integrity, Availability — the three pillars of information security."
+        },
+        {
+          "id": "q2",
+          "concept": "threats",
+          "type": "mcq",
+          "question": "Phishing is best classified as a:",
+          "options": [
+            "Social engineering attack",
+            "Physical attack",
+            "Cryptographic attack",
+            "Supply chain attack"
+          ],
+          "answer": 0,
+          "explanation": "Phishing manipulates people into revealing credentials or installing malware."
+        },
+        {
+          "id": "q3",
+          "concept": "defense_in_depth",
+          "type": "multi",
+          "question": "Select layers that belong to a defense-in-depth strategy:",
+          "options": [
+            "Network firewalls and segmentation",
+            "Endpoint protection and patching",
+            "Identity and access controls",
+            "Relying on a single password for everything"
+          ],
+          "answer": [0, 1, 2],
+          "explanation": "Multiple independent controls reduce the impact of any single failure."
+        },
+        {
+          "id": "q4",
+          "concept": "risk",
+          "type": "scenario",
+          "question": "An organization discovers a critical vulnerability in an internet-facing system. The best first response is:",
+          "options": [
+            "Assess exposure, then apply the patch or compensating controls urgently",
+            "Ignore it until the next maintenance window in six months",
+            "Email all employees to warn them",
+            "Delete the system logs"
+          ],
+          "answer": 0,
+          "explanation": "Risk = likelihood × impact; a critical internet-facing flaw demands immediate mitigation."
+        }
+      ]
+    },
+    {
+      "assessment_id": "a_web_security",
+      "skill_id": "web_security",
+      "title": "Web Application Security",
+      "description": "Injection, XSS, CSRF, and authentication flaws.",
+      "difficulty": 3,
+      "concepts": ["injection", "xss", "csrf", "auth"],
+      "questions": [
+        {
+          "id": "q1",
+          "concept": "injection",
+          "type": "mcq",
+          "question": "SQL injection is prevented primarily by:",
+          "options": [
+            "Parameterized queries / prepared statements",
+            "Blocking all user input",
+            "Using GET instead of POST",
+            "Encrypting the database"
+          ],
+          "answer": 0,
+          "explanation": "Parameterized queries separate data from code so user input cannot alter SQL structure."
+        },
+        {
+          "id": "q2",
+          "concept": "xss",
+          "type": "mcq",
+          "question": "Stored XSS occurs when:",
+          "options": [
+            "Malicious script is saved on the server and executed in other users' browsers",
+            "A user refreshes the page too quickly",
+            "Cookies are disabled",
+            "The server crashes"
+          ],
+          "answer": 0,
+          "explanation": "Stored XSS persists attacker-controlled script that later executes for victims."
+        },
+        {
+          "id": "q3",
+          "concept": "csrf",
+          "type": "mcq",
+          "question": "CSRF tokens protect against:",
+          "options": [
+            "A malicious site submitting requests using the victim's authenticated session",
+            "SQL injection attacks",
+            "Brute-force password guessing",
+            "Denial of service"
+          ],
+          "answer": 0,
+          "explanation": "Tokens verify the request originated from the legitimate site, not a third party."
+        },
+        {
+          "id": "q4",
+          "concept": "auth",
+          "type": "mcq",
+          "question": "The safest way to store passwords is:",
+          "options": [
+            "A salted, slow hash such as bcrypt/argon2",
+            "Plain text in the database",
+            "Base64 encoding",
+            "A fast hash like MD5"
+          ],
+          "answer": 0,
+          "explanation": "Salted slow hashes resist brute force and rainbow tables."
+        }
+      ]
+    },
+    {
+      "assessment_id": "a_aws",
+      "skill_id": "aws",
+      "title": "AWS Core Services",
+      "description": "Compute, storage, IAM, and pricing concepts.",
+      "difficulty": 3,
+      "concepts": ["compute", "storage", "iam", "pricing"],
+      "questions": [
+        {
+          "id": "q1",
+          "concept": "compute",
+          "type": "mcq",
+          "question": "Which AWS service provides resizable virtual servers?",
+          "options": ["EC2", "S3", "RDS", "Route 53"],
+          "answer": 0,
+          "explanation": "EC2 offers virtual machines with configurable instance types."
+        },
+        {
+          "id": "q2",
+          "concept": "storage",
+          "type": "mcq",
+          "question": "S3 is best used for:",
+          "options": [
+            "Object storage at scale with high durability",
+            "Block storage attached to a single EC2 instance",
+            "In-memory caching",
+            "Relational transactions"
+          ],
+          "answer": 0,
+          "explanation": "S3 stores objects (files) with 99.999999999% durability."
+        },
+        {
+          "id": "q3",
+          "concept": "iam",
+          "type": "mcq",
+          "question": "The principle of least privilege in IAM means:",
+          "options": [
+            "Grant users only the permissions they need to do their job",
+            "Grant everyone admin access for convenience",
+            "Use root credentials for all automation",
+            "Never create IAM roles"
+          ],
+          "answer": 0,
+          "explanation": "Least privilege minimizes the blast radius of compromised credentials."
+        },
+        {
+          "id": "q4",
+          "concept": "pricing",
+          "type": "mcq",
+          "question": "A workload that runs 24/7 and needs consistent capacity is best priced with:",
+          "options": [
+            "On-Demand for steady use, or Reserved Instances for significant savings",
+            "Spot Instances, which are guaranteed to never terminate",
+            "Lambda for every component",
+            "Free tier forever"
+          ],
+          "answer": 0,
+          "explanation": "Reserved/On-Demand suit steady workloads; spot is for interruptible, flexible jobs."
+        }
+      ]
+    },
+    {
+      "assessment_id": "a_javascript",
+      "skill_id": "javascript",
+      "title": "JavaScript",
+      "description": "ES6+, async, DOM, and functions.",
+      "difficulty": 2,
+      "concepts": ["es6", "async", "dom", "functions"],
+      "questions": [
+        {
+          "id": "q1",
+          "concept": "es6",
+          "type": "mcq",
+          "question": "The 'const' keyword declares a variable that:",
+          "options": [
+            "Cannot be reassigned",
+            "Is always immutable even for objects",
+            "Is hoisted only in strict mode",
+            "Can only hold numbers"
+          ],
+          "answer": 0,
+          "explanation": "const blocks reassignment of the binding; object contents can still change."
+        },
+        {
+          "id": "q2",
+          "concept": "async",
+          "type": "mcq",
+          "question": "Which statement correctly awaits an asynchronous operation?",
+          "options": [
+            "const data = await fetch(url); inside an async function",
+            "const data = fetch(url); synchronously",
+            "await is only valid outside functions",
+            "fetch returns a string directly"
+          ],
+          "answer": 0,
+          "explanation": "await pauses an async function until the promise settles."
+        },
+        {
+          "id": "q3",
+          "concept": "dom",
+          "type": "mcq",
+          "question": "document.querySelector('.card') returns:",
+          "options": [
+            "The first element matching the CSS selector",
+            "An array of all matching elements",
+            "The body element",
+            "A CSS stylesheet"
+          ],
+          "answer": 0,
+          "explanation": "querySelector returns the first match; querySelectorAll returns all matches."
+        },
+        {
+          "id": "q4",
+          "concept": "functions",
+          "type": "mcq",
+          "question": "An arrow function (x) => x * 2 differs from function(x){ return x * 2 } in that it:",
+          "options": [
+            "Has no own 'this' binding and implicitly returns the expression",
+            "Cannot take parameters",
+            "Always returns a promise",
+            "Must be declared with var"
+          ],
+          "answer": 0,
+          "explanation": "Arrow functions inherit 'this' lexically and can return expressions implicitly."
+        }
+      ]
+    }
+  ]
+}

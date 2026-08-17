@@ -1,0 +1,18 @@
+# LearnPath AI — runtime dependencies (FastAPI + cinematic SPA frontend)
+fastapi>=0.110
+uvicorn[standard]>=0.29
+pandas>=2.0
+numpy>=1.26
+scikit-learn>=1.4
+networkx>=3.2
+
+# Optional: real LLM provider (fallback local provider works without it)
+openai>=1.30
+
+# Optional: higher-quality semantic embeddings (falls back to local TF-IDF)
+# sentence-transformers>=2.7
+# faiss-cpu>=1.8
+
+# Testing
+pytest>=8.0
+httpx>=0.27

@@ -1,0 +1,23 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# Data artifacts
+*.db
+*.sqlite3
+data/embeddings_cache/
+model_cache/
+
+# IDE
+.vscode/
+.DS_Store
+
+# Freebuff worktrees
+.freebuff/
