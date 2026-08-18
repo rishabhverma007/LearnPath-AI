@@ -93,8 +93,8 @@ flowchart TB
         SVCS --> DB[(SQLite · learner digital twin)]
     end
     subgraph AI["Hybrid AI layer"]
-        LLM[LLMProvider: Local \ offline | OpenAI]
-        EMB[EmbeddingProvider: TF-IDF | sentence-transformers]
+        LLM["LLMProvider: Local (offline) | OpenAI"]
+        EMB["EmbeddingProvider: TF-IDF | sentence-transformers"]
         GRAPH[SkillGraph · NetworkX DAG · 62 skills]
         REC[Hybrid recommender · 8 factors + MMR]
         RULES[Rule engine · gaps · scheduling · adaptation]
@@ -224,7 +224,7 @@ flowchart LR
     subgraph Shell["index.html"]
         M[Motion layers: universe canvas · grain · vignette · cursor · curtain]
         N[Top navigation · brand · learner chip]
-        V[#view mount point]
+        V["#view mount point"]
     end
     subgraph JS["frontend/js"]
         A[api.js — fetch client + session/token]
@@ -238,7 +238,7 @@ flowchart LR
     P --> A
     P --> U
     P --> MO
-    A --> S[FastAPI /api/*]
+    A --> S["FastAPI /api/*"]
     MO --> M
 ```
 
