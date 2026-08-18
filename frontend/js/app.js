@@ -1,8 +1,22 @@
 /* LearnPath AI — application shell: router, nav, action dispatch, boot. */
 "use strict";
 
-const NAV_ORDER = ["journey", "skills", "recommendations", "coach", "assessments", "dashboard", "career", "settings"];
+const NAV_ORDER = ["journey", "skills", "recommendations", "coach", "assessments", "dashboard", "achievements", "leaderboard", "career", "settings"];
 const AUTH_PAGES = ["onboarding", ...NAV_ORDER];
+
+/* Empty-state copy per learner-gated page — shown when no learner exists yet. */
+const EMPTY_STATE = {
+  journey:        { icon: "🗺️", title: "No journey yet",          msg: "Your personalized roadmap will appear here once we know your goal, skills and time budget. It's planned phase-by-phase, prerequisite-first." },
+  skills:         { icon: "⚡", title: "No skill profile yet",    msg: "Skill gaps, the competency radar and the heatmap are computed from your goal and your current skills — nothing is guessed." },
+  recommendations:{ icon: "🎯", title: "No recommendations yet",  msg: "Courses, projects and knowledge checks are ranked against your skill gaps across 8 explainable factors. Build a profile to unlock them." },
+  coach:          { icon: "💬", title: "No coach yet",            msg: "Your AI coach answers from your actual profile, roadmap and gaps. Create a learner first so it knows who it's advising." },
+  assessments:    { icon: "🧠", title: "No assessments yet",      msg: "Knowledge checks unlock once your roadmap exists — they power the adaptive remediation that keeps your path on track." },
+  dashboard:      { icon: "📊", title: "No dashboard yet",        msg: "Progress, today's mission, weekly planning and live analytics light up after you create your learner digital twin." },
+  career:         { icon: "🚀", title: "No career data yet",      msg: "The readiness gauge, dimension bars and what-if simulator need your goal and skills to measure anything." },
+  achievements:   { icon: "🏅", title: "No achievements yet",     msg: "Your XP, level, badges and streaks live here — they start accruing the moment you complete your first learning activity." },
+  leaderboard:    { icon: "🏆", title: "No leaderboard yet",     msg: "Compare your XP, weekly progress and skill mastery against the cohort. Create a learner to join the board." },
+  settings:       { icon: "⚙️", title: "No profile yet",          msg: "Fine-tune your digital twin here — skill confidence sliders, preference weights and system insights." },
+};
 
 const App = (() => {
   let viewRoot = null;
@@ -15,8 +29,16 @@ const App = (() => {
     const items = ["landing", ...(Store.authed ? AUTH_PAGES : ["signin", "signup"])];
     nav.innerHTML = items.map((key) => {
       const p = Pages[key];
-      const gateOk = !p.gate || !!Store.learner;
-      return `<button class="nav-item" data-action="goto" data-page="${key}" ${!gateOk && p.gate ? "disabled" : ""}>
+      // signed-out: give each auth button its own distinct style
+      if (!Store.authed && key === "signup") {
+        return `<button class="nav-cta" data-action="goto" data-page="signup">${p.nav.label} →</button>`;
+      }
+      if (!Store.authed && key === "signin") {
+        return `<button class="nav-item nav-signin" data-action="goto" data-page="signin">
+          <span class="nav-ico">${p.nav.icon}</span><span>${p.nav.label}</span>
+        </button>`;
+      }
+      return `<button class="nav-item" data-action="goto" data-page="${key}">
         <span class="nav-ico">${p.nav.icon}</span><span>${p.nav.label}</span>
       </button>`;
     }).join("");
@@ -36,10 +58,10 @@ const App = (() => {
 
   async function navigate(page) {
     let target = Pages[page] ? page : "landing";
-    if (Pages[target].gate && !Store.learner) { target = "onboarding"; }
     // auth gate: app pages require a signed-in user
     if (!Store.authed && AUTH_PAGES.includes(target)) { target = "landing"; }
     if (Store.authed && (target === "signin" || target === "signup")) { target = "landing"; }
+    const needsLearner = Pages[target].gate && !Store.learner;
     Store.page = target;
     if (target === "onboarding") Store.recFilter = null;
 
@@ -49,11 +71,24 @@ const App = (() => {
     const view = document.getElementById("view");
     view.innerHTML = UI.skeletons(3);
     try {
-      const html = await Pages[target].render();
+      let html;
+      if (needsLearner) {
+        // learner-gated page with no learner yet → show a guided empty state
+        const es = EMPTY_STATE[target] || EMPTY_STATE.dashboard;
+        html = UI.emptyState({
+          icon: es.icon, title: es.title, msg: es.msg,
+          ctas: [
+            { label: "Create my learning journey →", page: "onboarding", primary: true },
+            { label: "⚡ Try a demo persona", action: "guest-demo" },
+          ],
+        });
+      } else {
+        html = await Pages[target].render();
+      }
       viewRoot = UI.setView(html);
       Motion.observeReveals(viewRoot);
       Motion.animateBars(viewRoot);
-      if (Pages[target].mount) Pages[target].mount(viewRoot);
+      if (!needsLearner && Pages[target].mount) Pages[target].mount(viewRoot);
     } catch (err) {
       console.error("render error:", err);
       view.innerHTML = `<div class="scene"><div class="note" style="margin-top:40px">Something went wrong: ${UI.esc(err.message)}<br><button class="btn btn-ghost btn-sm" style="margin-top:10px" data-action="goto" data-page="dashboard">Back to dashboard</button></div></div>`;
@@ -213,7 +248,8 @@ const App = (() => {
     async completeItem(btn) {
       const l = Store.learner;
       try {
-        await API.completeItem(l.learner_id, btn.dataset.type, btn.dataset.id);
+        const res = await API.completeItem(l.learner_id, btn.dataset.type, btn.dataset.id);
+        if (res.xp) UI.xpFX(res.xp, btn);
         UI.toast("Completed — proficiency updated. ✨");
         await refreshLearner();
         await navigate("journey");
@@ -240,7 +276,8 @@ const App = (() => {
     async recComplete(btn) {
       const l = Store.learner;
       try {
-        await API.feedback(l.learner_id, btn.dataset.id, btn.dataset.type, "complete");
+        const res = await API.feedback(l.learner_id, btn.dataset.id, btn.dataset.type, "complete");
+        if (res.xp) UI.xpFX(res.xp, btn);
         UI.toast("Completed — twin updated. ✨");
         Store.recs = null;
         await refreshLearner();
@@ -313,6 +350,13 @@ const App = (() => {
         Store.assessmentResult = result;
         Store.assessmentActive = null;
         Store.recs = null;
+        // LearnPath XP animations (server-computed; never client-submitted)
+        if (result.xp) {
+          if (result.xp.xp_awarded > 0) UI.xpFloat(result.xp.xp_awarded, btn);
+          (result.xp.new_badges || []).forEach(UI.badgeToast);
+          if (result.xp.level_up) UI.levelUp(result.xp.level_up);
+          if (result.xp.streak_milestone) UI.toast(`🔥 ${result.xp.streak_milestone}-day streak milestone!`);
+        }
         await refreshLearner();
         await navigate("assessments");
       } catch (err) { UI.toast(err.message, 4000); }
@@ -386,6 +430,39 @@ const App = (() => {
         Store.roadmap = roadmap;
         renderLearnerChip();
         await navigate("settings");
+      } catch (err) { UI.toast(err.message, 4000); }
+    },
+
+    /* --- gamification --- */
+    async lbScope(btn) {
+      Store.leaderboardScope = btn.dataset.value;
+      await navigate("leaderboard");
+    },
+    async claimChallenge(btn) {
+      const l = Store.learner;
+      if (!l) return;
+      try {
+        const res = await API.claimChallenge(l.learner_id, btn.dataset.id);
+        if (res.ok) {
+          UI.toast("Challenge reward claimed — +" + res.xp_awarded + " XP 🎉");
+          await navigate("achievements");
+        } else {
+          UI.toast(res.error || "Cannot claim yet");
+        }
+      } catch (err) { UI.toast(err.message, 4000); }
+    },
+    async completeMission() {
+      const l = Store.learner;
+      if (!l) return;
+      try {
+        const res = await API.completeMission(l.learner_id);
+        if (res.xp_awarded > 0) {
+          UI.toast("Daily mission complete — +" + res.xp_awarded + " XP 🎯");
+          if (res.level_up) UI.toast("🎉 Level up! You reached " + res.level_up.title + " — Level " + res.level_up.to);
+        } else {
+          UI.toast("Mission already claimed today — repeat completions earn 0 XP.");
+        }
+        await navigate("dashboard");
       } catch (err) { UI.toast(err.message, 4000); }
     },
 
@@ -486,9 +563,6 @@ const App = (() => {
       await navigate("onboarding");
     },
 
-    async toggleMenu() {
-      document.getElementById("topnav").classList.toggle("open");
-    },
   };
 
   /* ---------------------------------------------------------------
@@ -502,12 +576,6 @@ const App = (() => {
       const key = btn.dataset.action.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
       const action = actions[key];
       if (action) action.call(actions, btn);
-    });
-    // mobile menu closes after choosing a destination
-    document.addEventListener("click", (e) => {
-      if (e.target.closest("[data-action='goto']")) {
-        document.getElementById("topnav").classList.remove("open");
-      }
     });
   }
 

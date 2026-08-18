@@ -75,12 +75,87 @@ const UI = (() => {
     toastTimer = setTimeout(() => (t.hidden = true), ms);
   }
 
+  /* ------------------------- gamification FX ------------------------- */
+  function xpFloat(xp, anchor) {
+    if (!xp || xp <= 0) return;
+    const el = document.createElement("div");
+    el.className = "xp-float";
+    el.textContent = `+${xp} XP`;
+    document.body.appendChild(el);
+    const rect = (anchor && anchor.getBoundingClientRect()) || null;
+    el.style.left = (rect ? rect.left + rect.width / 2 : innerWidth / 2) + "px";
+    el.style.top = (rect ? rect.top : innerHeight / 3) + "px";
+    setTimeout(() => el.remove(), 1700);
+  }
+
+  function badgeToast(badge) {
+    const el = document.createElement("div");
+    el.className = "badge-toast";
+    el.innerHTML = `<div class="bt-icon">${badge.icon}</div>
+      <div><div class="bt-name">🏆 BADGE UNLOCKED — ${esc(badge.name)}</div>
+      <div class="bt-desc">${esc(badge.description)}</div></div>`;
+    document.body.appendChild(el);
+    setTimeout(() => { el.style.transition = "opacity .4s, transform .4s"; el.style.opacity = "0"; el.style.transform = "translateX(-50%) translateY(-14px)"; }, 2600);
+    setTimeout(() => el.remove(), 3100);
+  }
+
+  function levelUp(lu) {
+    const el = document.createElement("div");
+    el.className = "levelup-overlay";
+    el.innerHTML = `<div class="levelup-card">
+      <div class="lu-emoji">🎉</div>
+      <div class="lu-kicker">LEVEL UP</div>
+      <div class="lu-title">${esc(lu.title)} — Level ${lu.to}</div>
+      <div class="lu-sub">You earned +${lu.xp_earned} XP on this activity.</div>
+      <button class="btn btn-primary" data-lu-close>Continue learning →</button>
+    </div>`;
+    document.body.appendChild(el);
+    el.querySelector("[data-lu-close]").addEventListener("click", () => el.remove());
+    el.addEventListener("click", (e) => { if (e.target === el) el.remove(); });
+  }
+
+  function xpFX(xpResult, anchor) {
+    if (!xpResult) return;
+    xpFloat(xpResult.xp_awarded, anchor);
+    (xpResult.new_badges || []).forEach(badgeToast);
+    if (xpResult.level_up) levelUp(xpResult.level_up);
+  }
+
   /* ------------------------------ loading ------------------------------ */
   function skeletons(n = 3) {
     return `<div class="loading-page">${'<div class="skeleton"></div>'.repeat(n)}</div>`;
   }
   function empty(msg) {
     return `<div class="note">${esc(msg)}</div>`;
+  }
+
+  /* ------------------------------ empty state ------------------------------ */
+  /* Consistent “nothing here yet” view: animated skill-graph illustration,
+     a short message, and clear next-step buttons. */
+  function emptyState({ icon = "🎯", title = "Nothing here yet", msg = "", ctas = [] } = {}) {
+    const btns = ctas.map((c) => {
+      const cls = c.primary ? "btn btn-primary" : "btn btn-ghost";
+      const extra = c.action ? `data-action="${c.action}"` : `data-action="goto" data-page="${c.page || "onboarding"}"`;
+      return `<button class="${cls} btn-sm" ${extra} data-magnetic>${c.label}</button>`;
+    }).join("");
+    return `<div class="empty-state reveal in">
+      <div class="es-art" aria-hidden="true">
+        <svg viewBox="0 0 200 200" width="150" height="150">
+          <circle cx="100" cy="100" r="54" fill="none" stroke="rgba(124,108,255,0.35)" stroke-width="1.2"/>
+          <circle cx="100" cy="100" r="76" fill="none" stroke="rgba(34,211,238,0.22)" stroke-width="1" stroke-dasharray="4 7"/>
+          <circle cx="100" cy="100" r="26" fill="rgba(124,108,255,0.12)" stroke="rgba(124,108,255,0.6)" stroke-width="1.4"/>
+          <text x="100" y="108" text-anchor="middle" font-size="26">${icon}</text>
+          ${[54, 76].map((r, i) => {
+            const a = (i * 137.5) * Math.PI / 180;
+            return `<circle class="es-orbit-dot" data-d="${i}" cx="${(100 + r * Math.cos(a)).toFixed(1)}" cy="${(100 + r * Math.sin(a)).toFixed(1)}" r="4.5" fill="${i ? "#22d3ee" : "#7c6cff"}"/>`;
+          }).join("")}
+          <path d="M 46 100 L 100 46 M 154 100 L 100 154 M 100 46 L 100 154" stroke="rgba(148,163,184,0.25)" stroke-width="1" stroke-dasharray="2 5"/>
+        </svg>
+      </div>
+      <h2 class="es-title">${esc(title)}</h2>
+      <p class="es-msg">${esc(msg)}</p>
+      ${btns ? `<div class="es-ctas">${btns}</div>` : ""}
+    </div>`;
   }
   function setView(html) {
     const view = document.getElementById("view");
@@ -160,5 +235,5 @@ const UI = (() => {
     </div>`;
   }
 
-  return { esc, fmtPct, TYPE_ICON, FORMAT_LABEL, SEV, el, metric, badge, chip, tag, bar, card, rating, toast, skeletons, empty, setView, radarSVG, gaugeSVG, hBars };
+  return { esc, fmtPct, TYPE_ICON, FORMAT_LABEL, SEV, el, metric, badge, chip, tag, bar, card, rating, toast, skeletons, empty, emptyState, setView, radarSVG, gaugeSVG, hBars, xpFX, xpFloat, badgeToast, levelUp };
 })();

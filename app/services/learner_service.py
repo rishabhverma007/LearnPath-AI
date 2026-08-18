@@ -136,22 +136,27 @@ class LearnerService:
     ) -> Learner:
         """Mark a course/project/resource complete and boost proficiencies."""
         skill_ids: list[str] = []
+        difficulty = 3
+        is_capstone = False
         if item_type == "course":
             course = self.catalog.course(item_id)
             if course:
                 skill_ids = list(course.skills)
+                difficulty = course.difficulty
                 if item_id not in learner.completed_courses:
                     learner.completed_courses.append(item_id)
         elif item_type == "project":
             project = self.catalog.project(item_id)
             if project:
                 skill_ids = list(project.skills)
+                difficulty = project.difficulty
                 if item_id not in learner.completed_projects:
                     learner.completed_projects.append(item_id)
         elif item_type == "resource":
             res = self.catalog.resource(item_id)
             if res:
                 skill_ids = [res.skill_id]
+                difficulty = 2
                 if item_id not in learner.completed_resources:
                     learner.completed_resources.append(item_id)
         if skill_ids:

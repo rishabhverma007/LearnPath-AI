@@ -19,6 +19,7 @@ from app.services.learner_service import LearnerService
 from app.services.recommendation_service import RecommendationService
 from app.services.roadmap_service import RoadmapService
 from app.services.assessment_service import AssessmentService
+from app.services.gamification_service import GamificationService
 from app.utils import get_logger
 
 log = get_logger("server")
@@ -32,6 +33,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+def _seed_gamification():
+    """Seed demo leaderboard rows + weekly challenges once per database."""
+    try:
+        from app.ml.demo_seed import seed_demo_gamification, seed_weekly_challenges
+
+        seed_weekly_challenges(_engine().repo)
+        n = seed_demo_gamification(_engine().repo)
+        if n:
+            log.info("Seeded %d demo learners for the leaderboard", n)
+    except Exception as exc:  # noqa: BLE001 - seeding must never block startup
+        log.warning("gamification seeding skipped: %s", exc)
 
 # ----------------------------------------------------------------------
 # Composition
@@ -259,11 +274,34 @@ def recommend(learner_id: str, payload: dict = Body(default={})):
 def complete_item(learner_id: str, payload: dict = Body(...)):
     learner = _load_learner_or_404(learner_id)
     service = _learner_service()
-    learner = service.mark_item_complete(
-        learner, str(payload.get("item_type", "")), str(payload.get("item_id", ""))
-    )
+    item_type = str(payload.get("item_type", "")).strip()
+    item_id = str(payload.get("item_id", "")).strip()
+    if not item_type or not item_id:
+        raise HTTPException(status_code=422, detail="item_type and item_id are required")
+    # 1. mark the item complete FIRST so badge conditions (completed counts,
+    #    proficiency) see the updated twin when XP is evaluated below.
+    learner = service.mark_item_complete(learner, item_type, item_id)
     _roadmap_service().refresh_statuses(learner)
-    return learner.to_dict()
+    # 2. award XP (server-side; anti-farm built in)
+    xp_result = {}
+    try:
+        from app.services.gamification_service import GamificationService
+
+        gs = GamificationService(_engine().repo)
+        event = {"course": "course_completed", "project": "project_completed",
+                 "resource": "resource_completed"}.get(item_type)
+        difficulty = 3
+        if item_type == "course":
+            c = _engine().catalog.course(item_id)
+            difficulty = c.difficulty if c else 3
+        elif item_type == "project":
+            p = _engine().catalog.project(item_id)
+            difficulty = p.difficulty if p else 3
+        if event:
+            xp_result = gs.handle_event(learner, event, item_id, difficulty=difficulty)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("XP award on complete failed: %s", exc)
+    return {**learner.to_dict(), "xp": xp_result}
 
 
 @app.post("/api/learners/{learner_id}/feedback")
@@ -287,6 +325,28 @@ def add_feedback(learner_id: str, payload: dict = Body(...)):
         service.mark_item_complete(
             learner, str(payload.get("item_type", "")), str(payload.get("item_id", ""))
         )
+        xp_result = {}
+        item_type = str(payload.get("item_type", "")).strip()
+        item_id = str(payload.get("item_id", "")).strip()
+        if item_type and item_id:
+            try:
+                from app.services.gamification_service import GamificationService
+
+                gs = GamificationService(_engine().repo)
+                event = {"course": "course_completed", "project": "project_completed",
+                         "resource": "resource_completed"}.get(item_type)
+                difficulty = 3
+                if item_type == "course":
+                    c = _engine().catalog.course(item_id)
+                    difficulty = c.difficulty if c else 3
+                elif item_type == "project":
+                    p = _engine().catalog.project(item_id)
+                    difficulty = p.difficulty if p else 3
+                if event:
+                    xp_result = gs.handle_event(learner, event, item_id, difficulty=difficulty)
+            except Exception as exc:  # noqa: BLE001
+                log.warning("XP award on feedback-complete failed: %s", exc)
+        return {**learner.to_dict(), "xp": xp_result}
     return learner.to_dict()
 
 
@@ -468,6 +528,193 @@ def insights(learner_id: str):
             key=lambda sid: sum(1 for r in recs if sid in r.skills), reverse=True,
         )[:5],
     }
+
+
+# ----------------------------------------------------------------------
+# Gamification — LearnPath XP
+# ----------------------------------------------------------------------
+@app.get("/api/learners/{learner_id}/gamification")
+def gamification(learner_id: str):
+    learner = _load_learner_or_404(learner_id)
+    return GamificationService(_engine().repo).get_state(learner)
+
+
+@app.get("/api/learners/{learner_id}/xp-history")
+def xp_history(learner_id: str, limit: int = 200):
+    learner = _load_learner_or_404(learner_id)
+    return {"transactions": _engine().repo.xp_transactions(learner.learner_id, limit=limit)}
+
+
+@app.get("/api/learners/{learner_id}/badges")
+def badges(learner_id: str):
+    learner = _load_learner_or_404(learner_id)
+    earned = {b["badge_id"] for b in _engine().repo.learner_badges(learner.learner_id)}
+    defs = [
+        {"badge_id": b[0], "name": b[1], "icon": b[2], "description": b[3],
+         "xp_reward": b[6], "earned": b[0] in earned}
+        for b in config.BADGE_DEFINITIONS
+    ]
+    return {"badges": defs}
+
+
+@app.get("/api/learners/{learner_id}/streak")
+def streak(learner_id: str):
+    learner = _load_learner_or_404(learner_id)
+    g = GamificationService(_engine().repo).get_state(learner, include_meta=False)
+    return {"current_streak": g["current_streak"], "longest_streak": g["longest_streak"],
+            "last_learning_date": g["last_learning_date"]}
+
+
+@app.get("/api/leaderboard")
+def leaderboard(learner_id: str = "", scope: str = "global"):
+    """Leaderboard across scopes: global | weekly | monthly | skill | cohort | mastery.
+
+    The current learner is highlighted client-side; here we just return rows.
+    """
+    eng = _engine()
+    gs = GamificationService(eng.repo)
+    rows = eng.repo.all_gamification_rows()
+    if learner_id:
+        current = eng.repo.get_learner(learner_id)
+    else:
+        current = None
+
+    scope = scope.strip().lower()
+    if scope == "weekly":
+        since = week_start_iso()
+        key = "weekly_xp"
+    elif scope == "monthly":
+        since = month_start_iso()
+        key = "monthly_xp"
+    else:
+        key = "total_xp"
+
+    if scope == "skill":
+        # rank by proficiency on the current learner's weakest target skill
+        if current is None:
+            return {"scope": "skill", "rows": [], "note": "Pick a learner first."}
+        skill_id = min(current.known_skills.items(), key=lambda kv: kv[1])[0] if current.known_skills else ""
+        skill_rows = []
+        gam_lookup = {r["learner_id"]: r for r in rows}
+        for l in eng.repo.list_learners():
+            prof = l.proficiency(skill_id)
+            if prof > 0:
+                name = _learner_display_name(eng, l)
+                gr = gam_lookup.get(l.learner_id, {})
+                skill_rows.append({"learner_id": l.learner_id, "name": name,
+                                   "skill_id": skill_id, "value": round(prof * 100, 1),
+                                   "metric": f"{skill_id} proficiency",
+                                   "level": gr.get("level") or gam_level_for(gr.get("total_xp") or 0),
+                                   "streak": gr.get("current_streak") or 0,
+                                   "xp": gr.get("total_xp") or 0})
+        skill_rows.sort(key=lambda r: -r["value"])
+        return {"scope": "skill", "skill_id": skill_id, "rows": skill_rows}
+
+    if scope == "cohort":
+        cohort = set(eng.repo.learner_ids_in_cohort(learner_id or ""))
+        rows = [r for r in rows if r["learner_id"] in cohort]
+
+    if scope == "mastery":
+        mastered = {}
+        readiness = {}
+        for l in eng.repo.list_learners():
+            m = sum(1 for v in l.known_skills.values() if v >= 0.90)
+            mastered[l.learner_id] = m
+            role = eng.catalog.role(l.target_role)
+            if role:
+                from app.ml.career_readiness import compute_readiness
+                rd = compute_readiness(l, eng.catalog)
+                readiness[l.learner_id] = round(rd.overall * 100, 1) if rd else 0.0
+        out = []
+        for r in rows:
+            out.append({"learner_id": r["learner_id"], "name": r["name"],
+                        "level": r.get("level") or gam_level_for(r["total_xp"]),
+                        "skills_mastered": mastered.get(r["learner_id"], 0),
+                        "readiness": readiness.get(r["learner_id"], 0.0),
+                        "total_xp": r["total_xp"], "streak": r.get("current_streak") or 0})
+        out.sort(key=lambda r: (-r["skills_mastered"], -r["readiness"]))
+        return {"scope": "mastery", "rows": out}
+
+    # default: xp-based scopes
+    rows = [r for r in rows if not r.get("leaderboard_opt_out")]
+    rows.sort(key=lambda r: -r[key])
+    out = []
+    for rank, r in enumerate(rows[: config.LEADERBOARD_PAGE_SIZE], 1):
+        out.append({"rank": rank, "learner_id": r["learner_id"], "name": r["name"],
+                    "level": r.get("level") or gam_level_for(r["total_xp"]),
+                    "xp": r[key], "streak": r.get("current_streak") or 0,
+                    "metric": key})
+    return {"scope": scope, "rows": out, "metric": key}
+
+
+@app.get("/api/challenges/current")
+def current_challenges(learner_id: str = ""):
+    eng = _engine()
+    gs = GamificationService(eng.repo)
+    if learner_id:
+        learner = _load_learner_or_404(learner_id)
+        gs.update_challenge_progress(learner)
+        challenges = gs._challenge_states(learner)
+    else:
+        challenges = [
+            {"challenge_id": c["id"], "title": c["title"], "description": c["description"],
+             "challenge_type": c["challenge_type"], "target": float(c["target"]),
+             "xp_reward": int(c["xp_reward"]), "progress": 0, "completed": False, "claimed": False}
+            for c in gam_current()
+        ]
+    return {"challenges": challenges}
+
+
+@app.post("/api/challenges/{challenge_id}/claim")
+def claim_challenge(challenge_id: str, payload: dict = Body(default={})):
+    learner_id = str(payload.get("learner_id", ""))
+    learner = _load_learner_or_404(learner_id)
+    result = GamificationService(_engine().repo).claim_challenge(learner, challenge_id)
+    if not result.get("ok"):
+        raise HTTPException(status_code=400, detail=result.get("error", "Cannot claim"))
+    return result
+
+
+@app.post("/api/learners/{learner_id}/mission/complete")
+def complete_mission(learner_id: str):
+    """Award daily-mission XP (server-side, once per day)."""
+    learner = _load_learner_or_404(learner_id)
+    from datetime import datetime, timezone
+    today = datetime.now(timezone.utc).date().isoformat()
+    result = GamificationService(_engine().repo).handle_event(
+        learner, "daily_mission_completed", activity_id=f"mission_{today}"
+    )
+    return result
+
+
+def gam_level_for(xp: int) -> int:
+    from app.ml import gamification as gam
+    return gam.level_for_xp(xp)[0]
+
+
+def week_start_iso() -> str:
+    from app.ml import gamification as gam
+    return gam.week_start_iso()
+
+
+def month_start_iso() -> str:
+    from app.ml import gamification as gam
+    return gam.month_start_iso()
+
+
+def gam_current() -> list[dict]:
+    from app.ml import gamification as gam
+    return gam.current_challenges(_engine().repo)
+
+
+def _learner_display_name(eng, learner) -> str:
+    """Best-effort display name: user account name, else persona-ish label."""
+    user = eng.repo.get_user(learner.learner_id)
+    if user:
+        return user["name"]
+    # persona learners carry their goal text; use role title if available
+    role = eng.catalog.role(learner.target_role)
+    return role.title if role else f"Learner {learner.learner_id[-4:]}"
 
 
 # ----------------------------------------------------------------------

@@ -112,6 +112,17 @@ class KnowledgeBase:
 # ----------------------------------------------------------------------
 def detect_intent(text: str) -> str:
     t = text.lower()
+    # gamification intents
+    if re.search(r"level up|reach level|next level|how (much|many) xp|to level", t):
+        return "level"
+    if re.search(r"leaderboard|ranking|rank (up|down|improve)|improve my rank|top of the|compete", t):
+        return "rank"
+    if re.search(r"(challenge|weekly challenge)s?\b|what challenges", t):
+        return "challenge"
+    if re.search(r"easiest way to (get|earn) xp|farm xp|fastest way to (get|earn) xp|quick xp", t):
+        return "xp_farm"
+    if re.search(r"how many badges|my badges|what badges|badge", t):
+        return "badge"
     if re.search(r"what should i do today|today'?s mission|plan for today|what do i do today", t):
         return "mission"
     if re.search(r"what'?s next|what should i (learn|do) next|next step", t):
@@ -150,6 +161,16 @@ class CoachService:
     def chat(self, learner: Learner, roadmap: Roadmap | None, message: str) -> CoachReply:
         intent = detect_intent(message)
         try:
+            if intent == "level":
+                return self._answer_level(learner, roadmap)
+            if intent == "rank":
+                return self._answer_rank(learner, roadmap)
+            if intent == "challenge":
+                return self._answer_challenge(learner, roadmap)
+            if intent == "xp_farm":
+                return self._answer_xp_farm(learner, roadmap)
+            if intent == "badge":
+                return self._answer_badge(learner)
             if intent == "mission":
                 return self._answer_mission(learner, roadmap)
             if intent == "next":
@@ -197,7 +218,109 @@ class CoachService:
         if learner.assessment_scores:
             scores = ", ".join(f"{self._skill_name(s)} {sc:.0%}" for s, sc in list(learner.assessment_scores.items())[:4])
             lines.append(f"Latest assessment scores: {scores}.")
+        g = self._gam_state(learner)
+        if g:
+            lines.append(f"LearnPath XP: Level {g.get('level', 1)} ({g.get('level_title', 'Explorer')}), {g.get('total_xp', 0):,} XP, "
+                         f"rank #{g.get('leaderboard_position') or '?'} of {g.get('leaderboard_size', 0)}, "
+                         f"{g.get('current_streak', 0)}-day streak, {g.get('badge_count', 0)} badges.")
         return "\n".join(lines)
+
+    # ------------------------------------------------------------------
+    # Gamification-aware intents (retrieve real state; never invent XP)
+    # ------------------------------------------------------------------
+    def _gam_state(self, learner: Learner) -> dict:
+        try:
+            from app.services.gamification_service import GamificationService
+
+            return GamificationService().get_state(learner, include_meta=False)
+        except Exception:  # noqa: BLE001
+            return {}
+
+    def _answer_level(self, learner: Learner, roadmap: Roadmap | None) -> CoachReply:
+        g = self._gam_state(learner)
+        if not g:
+            return CoachReply("I couldn't load your gamification state right now.", intent="level")
+        xp = g["total_xp"]
+        need = g["xp_to_next_level"]
+        lines = [f"You are **Level {g['level']} — {g['level_title']}** with **{xp:,} XP**."]
+        if need:
+            lines.append(f"You need **{need:,} more XP** to reach the next level.")
+        # next roadmap milestone is the fastest meaningful source
+        if roadmap and roadmap.next_action():
+            item = roadmap.next_action()
+            lines.append(f"Your next milestone is **{item.title}** — completing it is the fastest meaningful progress toward your goal.")
+        weak = min(learner.known_skills.items(), key=lambda kv: kv[1], default=None)
+        if weak:
+            s = self.catalog.skill(weak[0])
+            lines.append(f"Strengthening **{s.name if s else weak[0]}** (now {weak[1]:.0%}) would also raise your skill-mastery XP.")
+        return CoachReply("\n".join(lines), intent="level")
+
+    def _answer_rank(self, learner: Learner, roadmap: Roadmap | None) -> CoachReply:
+        g = self._gam_state(learner)
+        if not g:
+            return CoachReply("I couldn't load your ranking right now.", intent="rank")
+        pos = g.get("leaderboard_position")
+        size = g.get("leaderboard_size", 0)
+        lines = [f"You're **#{pos} of {size}** learners on the all-time leaderboard with **{g['total_xp']:,} XP**."]
+        if size:
+            pct = round(pos / size * 100) if pos else None
+            if pct is not None:
+                lines.append(f"That puts you in the top {pct}% of the cohort.")
+        lines.append("The weekly board resets every Monday — new learners can compete on this week's XP.")
+        lines.append("Your fastest honest way up: complete the next roadmap milestone and master your weakest skill.")
+        return CoachReply("\n".join(lines), intent="rank")
+
+    def _answer_challenge(self, learner: Learner, roadmap: Roadmap | None) -> CoachReply:
+        try:
+            from app.services.gamification_service import GamificationService
+
+            gs = GamificationService()
+            challenges = gs._challenge_states(learner)
+        except Exception:  # noqa: BLE001
+            challenges = []
+        if not challenges:
+            return CoachReply("No weekly challenges are active right now — check back on Monday.", intent="challenge")
+        lines = ["This week's challenges:"]
+        for c in challenges:
+            pct = min(100, int(c["progress"] / max(1, c["target"]) * 100))
+            done = "✓ done" if c["completed"] else f"{pct}% done"
+            lines.append(f"• **{c['title']}** — {c['description']} ({done}) · +{c['xp_reward']} XP")
+        lines.append("Challenges reward real learning — assessments, projects, mastery — never busywork.")
+        return CoachReply("\n".join(lines), intent="challenge")
+
+    def _answer_xp_farm(self, learner: Learner, roadmap: Roadmap | None) -> CoachReply:
+        """Explicitly steer away from XP farming."""
+        lines = [
+            "There is no shortcut worth taking — LearnPath XP rewards mastery, not repetition.",
+            "Repeating the same course or resource earns 0 XP, and there's no XP for logging in, clicking around, or chatting.",
+            "Your fastest meaningful progress is to complete the next roadmap milestone and strengthen your current weak skill.",
+            "Focus on learning well; the XP, level-ups and ranking follow from that.",
+        ]
+        if roadmap and roadmap.next_action():
+            lines.append(f"Start with: **{roadmap.next_action().title}**.")
+        return CoachReply("\n".join(lines), intent="xp_farm")
+
+    def _answer_badge(self, learner: Learner) -> CoachReply:
+        from app.ml import gamification as gam
+
+        earned = {b["badge_id"] for b in self._repo_badges(learner)}
+        owned = [b for b in gam.all_badge_definitions() if b["badge_id"] in earned]
+        total = len(gam.all_badge_definitions())
+        if not owned:
+            return CoachReply(
+                f"You haven't earned any badges yet — complete your first learning activity to unlock **First Step**.",
+                intent="badge",
+            )
+        lines = [f"You've earned **{len(owned)} of {total}** badges:"]
+        lines += [f"• {b['icon']} **{b['name']}** — {b['description']}" for b in owned[:8]]
+        if len(owned) > 8:
+            lines.append(f"…and {len(owned) - 8} more. See the Achievements page for the full list.")
+        return CoachReply("\n".join(lines), intent="badge")
+
+    def _repo_badges(self, learner: Learner) -> list[dict]:
+        from app.database.repository import LearnerRepository
+
+        return LearnerRepository().learner_badges(learner.learner_id)
 
     def _answer_mission(self, learner: Learner, roadmap: Roadmap | None) -> CoachReply:
         if not roadmap or not roadmap.phases:

@@ -68,6 +68,16 @@ const API = {
   mission(id) { return this.get(`/api/learners/${id}/mission`); },
   career(id) { return this.get(`/api/learners/${id}/career`); },
   whatIf(id, newRole) { return this.post(`/api/learners/${id}/whatif`, { new_role: newRole }); },
+
+  // ----- gamification (LearnPath XP) -----
+  gamification(id) { return this.get(`/api/learners/${id}/gamification`); },
+  xpHistory(id) { return this.get(`/api/learners/${id}/xp-history`); },
+  badges(id) { return this.get(`/api/learners/${id}/badges`); },
+  streak(id) { return this.get(`/api/learners/${id}/streak`); },
+  leaderboard(id, scope) { return this.get(`/api/leaderboard?learner_id=${id}&scope=${scope}`); },
+  challenges(id) { return this.get(`/api/challenges/current?learner_id=${id}`); },
+  claimChallenge(learnerId, challengeId) { return this.post(`/api/challenges/${challengeId}/claim`, { learner_id: learnerId }); },
+  completeMission(id) { return this.post(`/api/learners/${id}/mission/complete`, {}); },
   insights(id) { return this.get(`/api/learners/${id}/insights`); },
   sessionMissed(id) { return this.post(`/api/learners/${id}/session-missed`, {}); },
 };

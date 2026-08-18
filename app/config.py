@@ -151,6 +151,119 @@ PREFERENCE_FORMAT_MATCH = {
 }
 
 # ------------------------------------------------------------------
+# Gamification — LearnPath XP
+# ------------------------------------------------------------------
+# Base XP per learning activity (see README: rewards mastery, not activity).
+XP_RULES = {
+    "micro_lesson_completed": 10,
+    "resource_completed": 15,
+    "course_completed": 100,
+    "difficult_course_completed": 150,   # difficulty >= 4
+    "project_completed": 200,
+    "advanced_project_completed": 300,   # difficulty >= 4
+    "capstone_completed": 500,           # capstone roadmap item
+    "assessment_completed": 30,
+    "daily_mission_completed": 25,
+    "weekly_milestone_completed": 75,
+    "skill_mastered": 100,
+    "remediation_completed": 40,
+    "challenge_completed": 200,
+    "roadmap_phase_completed": 150,
+}
+
+# Performance bonus XP for assessment scores (in addition to base).
+ASSESSMENT_BONUS = [
+    (0.60, 0.75, 10),
+    (0.75, 0.85, 25),
+    (0.85, 0.95, 40),
+    (0.95, 1.01, 60),
+]
+
+# Improvement (comeback) bonus: rewarded when a re-assessment beats the
+# previous attempt by at least this many percentage points.
+IMPROVEMENT_BONUS_XP = 50
+IMPROVEMENT_BONUS_MIN_GAIN = 0.20   # +20 percentage points required
+
+# Streak milestone rewards (days -> (xp, badge_id)).
+STREAK_MILESTONES = {
+    3: (20, "streak_3"),
+    7: (75, "streak_7"),
+    14: (120, "streak_14"),
+    30: (300, "streak_30"),
+    60: (600, "streak_60"),
+    100: (1000, "streak_100"),
+}
+
+# Difficulty multipliers applied to base XP (based on resource metadata).
+DIFFICULTY_MULTIPLIERS = {
+    1: 1.0,
+    2: 1.0,
+    3: 1.2,
+    4: 1.5,
+    5: 2.0,
+}
+
+# XP -> Level thresholds (cumulative progression curve).
+LEVEL_THRESHOLDS = [
+    (1, "Explorer", 0),
+    (2, "Beginner", 250),
+    (3, "Learner", 600),
+    (4, "Builder", 1200),
+    (5, "Practitioner", 2000),
+    (6, "Specialist", 3500),
+    (7, "Advanced", 5500),
+    (8, "Expert", 8000),
+    (9, "Mentor", 11000),
+    (10, "Master", 15000),
+]
+
+# Competitive ranks (from XP percentile of the cohort).
+RANKS = [
+    "Novice", "Apprentice", "Explorer", "Builder", "Practitioner",
+    "Specialist", "Advanced", "Expert", "Master", "Grandmaster",
+]
+
+# Badge definitions: (id, name, icon, description, condition_type, condition_value, xp_reward)
+# condition_types: first_activity, count_completed, mastered_skills, streak_days,
+#                  assessment_high_score_count, projects_completed, phase_completed,
+#                  skill_90, capstone, early_milestone, remediation_pass, challenge_done
+BADGE_DEFINITIONS = [
+    ("first_step", "First Step", "🎯", "Complete your first learning activity.", "first_activity", 1, 10),
+    ("knowledge_seeker", "Knowledge Seeker", "📚", "Complete 5 courses or resources.", "count_completed", 5, 25),
+    ("skill_builder", "Skill Builder", "🧠", "Master 3 skills (90%+ proficiency).", "mastered_skills", 3, 50),
+    ("on_fire", "On Fire", "🔥", "Maintain a 7-day learning streak.", "streak_days", 7, 25),
+    ("consistent_learner", "Consistent Learner", "🚀", "Maintain a 30-day learning streak.", "streak_days", 30, 100),
+    ("builder", "Builder", "🏗️", "Complete 3 projects.", "projects_completed", 3, 75),
+    ("assessment_ace", "Assessment Ace", "🧪", "Score 90%+ on 5 assessments.", "assessment_high_score_count", 5, 50),
+    ("path_explorer", "Path Explorer", "🧭", "Complete an entire roadmap phase.", "phase_completed", 1, 50),
+    ("mastery", "Mastery", "🏆", "Reach 90%+ proficiency in a skill.", "skill_90", 1, 75),
+    ("capstone_champion", "Capstone Champion", "🌟", "Complete a capstone project.", "capstone", 1, 100),
+    ("fast_learner", "Fast Learner", "⚡", "Complete a milestone ahead of schedule.", "early_milestone", 1, 50),
+    ("problem_solver", "Problem Solver", "🧩", "Complete remediation and pass the re-assessment.", "remediation_pass", 1, 50),
+    ("streak_3", "Three-Day Spark", "✨", "Reach a 3-day learning streak.", "streak_days", 3, 0),
+    ("streak_7", "Week Warrior", "🔥", "Reach a 7-day learning streak.", "streak_days", 7, 0),
+    ("streak_14", "Fortnight Force", "⚡", "Reach a 14-day learning streak.", "streak_days", 14, 0),
+    ("streak_30", "Monthly Master", "🚀", "Reach a 30-day learning streak.", "streak_days", 30, 0),
+    ("streak_60", "Sixty-Day Scholar", "🏅", "Reach a 60-day learning streak.", "streak_days", 60, 0),
+    ("streak_100", "Centurion", "👑", "Reach a 100-day learning streak.", "streak_days", 100, 0),
+]
+
+# Anti-farm: revision bonus for repeats, once per period (hours).
+REVISION_BONUS_XP = 5
+REVISION_BONUS_COOLDOWN_HOURS = 24
+
+# Weekly challenge templates: (id, title, description, challenge_type, target, xp_reward)
+CHALLENGE_TEMPLATES = [
+    ("assessments_3", "Assessment Marathon", "Complete 3 assessments this week.", "assessment_count", 3, 200),
+    ("build_a_project", "Project Builder", "Complete 1 hands-on project this week.", "project_count", 1, 250),
+    ("master_two", "Skill Sharer", "Reach 85%+ proficiency in 2 skills this week.", "skill_85_count", 2, 200),
+    ("five_hours", "Time Deep-Dive", "Log 5 hours of learning this week.", "learning_hours", 5, 150),
+]
+
+# Leaderboard page size
+LEADERBOARD_PAGE_SIZE = 50
+
+# ------------------------------------------------------------------
 # Misc
 # ------------------------------------------------------------------
 MAX_LLM_TIMEOUT_SECONDS = 30

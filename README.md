@@ -76,6 +76,8 @@ algorithms.
 | **Daily Mission** | Today's concrete plan sized to weekly hours; smart weekly time planner with missed-session recovery |
 | **What-If Simulator** | Switch target role → see transferable vs additional skills and extra time |
 | **Micro-learning** | "Learn this in 10 minutes" lessons for weak concepts; AI project generator |
+| **LearnPath XP** | Outcome-based gamification: XP ledger, levels, ranks, streaks, badges, weekly challenges |
+| **Leaderboards** | Fair All-Time / Weekly / Monthly / Skill / Mastery boards — weekly & monthly reset so new learners can compete |
 | **Reliability** | Offline-first: full local fallback for LLM & embeddings; schema validation; graceful failures |
 
 ## 4. Architecture
@@ -122,17 +124,20 @@ app/
 │   ├── daily_mission.py    # Today's mission + smart time planner
 │   ├── what_if.py          # Goal-switch simulator
 │   ├── personalization.py  # Proficiency estimation, preference adaptation
-│   └── evaluation.py       # Synthetic-benchmark metrics (Precision/Recall/NDCG/Diversity)
+│   ├── evaluation.py       # Synthetic-benchmark metrics (Precision/Recall/NDCG/Diversity)
+│   ├── gamification.py     # XP engine: rules, levels, ranks, streaks, badges, leaderboards
+│   ├── gamification_service.py  # Event pipeline: XP award → level-up → badges → challenges
+│   └── demo_seed.py        # Realistic demo learners + gamification state for the leaderboard
 ├── graph/skill_graph.py    # NetworkX DAG: prerequisites, closures, topological order
 ├── data/                   # Catalogue: skills, roles, courses, projects, resources, assessments
 ├── database/               # SQLite repository + Learner Digital Twin model
 ├── services/               # engine (composition root) + learner/roadmap/recommendation/assessment services
-├── tests/                  # 68 pytest tests incl. end-to-end FastAPI demo flow
+├── tests/                  # 105 pytest tests incl. end-to-end FastAPI demo flow + gamification suite
 └── frontend/               # Cinematic SPA (zero frameworks):
     ├── index.html          #   shell + motion layers (universe canvas, grain, vignette, cursor)
     ├── css/styles.css      #   deep-space design system + glassmorphism
     └── js/                 #   api.js (client) · motion.js (aurora/starfield/cursor/tilt/curtain)
-                            #   ui.js (charts) · pages.js (11 views incl. landing + auth)
+                            #   ui.js (charts + XP/badge FX) · pages.js (13 views incl. landing, auth, Achievements, Leaderboard)
                             #   app.js (router/nav/boot)
 ```
 
@@ -209,7 +214,59 @@ flowchart TD
   recommender, so "keeps skipping long videos" shifts future recommendations toward
   shorter hands-on items.
 
-## 8. Tech Stack
+## 8. LearnPath XP — Outcome-Based Gamification
+
+> *Learn. Build. Master. Rise.* — LearnPath AI rewards **learning progress, mastery and
+> consistency**, never busywork. No XP for logging in, viewing pages, or repeated clicks;
+> every reward is server-calculated, auditable and anti-farm protected.
+
+Every meaningful learning action emits a **LearningEvent** into a centralized pipeline:
+
+```mermaid
+flowchart LR
+    E[LearningEvent] --> XP[XP Engine: base + bonus + difficulty multiplier]
+    XP --> D{Already rewarded?}
+    D -- "yes → 0 XP" --> L[XP Ledger]
+    D -- "no" --> L[XP Ledger - immutable transaction]
+    L --> LV[Level Calculator - progression curve]
+    LV --> B[Badge Engine - deterministic conditions]
+    B --> LB[Leaderboard Update]
+    LB --> C[Weekly Challenge Progress]
+    C --> S[Streak + milestones]
+```
+
+**Key mechanics**
+
+| Mechanic | Details |
+|---|---|
+| **XP rules** | Configurable in `app/config.py` — e.g. course +100, project +200, capstone +500, assessment +30, daily mission +25, skill mastery +100, remediation +40 |
+| **Quality multiplier** | Assessments & projects scale by performance: score 60–74% → +10 bonus, 75–84% → +25, 85–94% → +40, 95–100% → +60; difficulty multipliers 1.0×–2.0× |
+| **Anti-farming** | Duplicate completion = 0 XP; daily mission once per day; challenge claims only when genuinely completed; **no arbitrary `POST /xp` endpoint** — the client only reports events, the server computes rewards |
+| **XP ledger** | Every reward writes an immutable-style `XPTransaction` (base, bonus, multiplier, final, reason, timestamp) — the UI explains "How did I earn this XP?" |
+| **Levels** | Curved thresholds (Explorer 0 → Master 15,000 XP) with a progress bar, "X XP to next level", and level-up detection |
+| **Ranks** | Separate competitive hierarchy (Novice → Grandmaster) from levels |
+| **Streaks** | Only *meaningful* activity counts (course, assessment, project, mission); milestones at 3/7/14/30/60/100 days award bonus XP + badges |
+| **Badges** | 18 deterministic badges (First Step, Knowledge Seeker, Assessment Ace, On Fire, Path Explorer, Capstone Champion…), auto-awarded, re-evaluated so missed events self-heal |
+| **Challenges** | Weekly challenges derived from the learner's own roadmap (e.g. "Complete 3 assessments this week") — claimable only when complete |
+| **Comeback bonus** | Improve from a failed assessment to a passing re-assessment → +50 improvement XP. Failure is never punished |
+
+**Leaderboards** — fair by design: All-Time, **Weekly** and **Monthly** (XP earned in the
+period, so new learners can compete), per-**Skill** (proficiency) and the **Mastery Board**
+(skills mastered + career readiness). Demo learners (Alex, Priya, Rahul…) are clearly
+labeled as demo data; the current learner is always highlighted and rank movement
+(↑/↓/→) is tracked from XP-transaction timestamps.
+
+The AI Coach is gamification-aware: ask *"What do I need to reach Level 8?"* or *"How
+can I improve my ranking?"* and it answers from the learner's real XP ledger — and it
+steers XP-seeking learners back to meaningful progress rather than farming.
+
+**Gamification API** — `GET /api/learners/{id}/gamification` (XP, level, rank, streak,
+badges, next-level) · `GET .../xp-history` (ledger) · `GET .../badges` · `GET .../streak` ·
+`GET /api/leaderboard?scope=global|weekly|monthly|skill|cohort|mastery` ·
+`GET /api/challenges/current` · `POST /api/challenges/{id}/claim` ·
+`POST /api/learners/{id}/mission/complete`.
+
+## 9. Tech Stack
 
 **Backend** — Python 3.11 · FastAPI + Uvicorn · scikit-learn · NetworkX · Pandas · NumPy ·
 SQLite (stdlib `sqlite3`) · pytest + httpx · optional `openai` / `sentence-transformers`.
@@ -229,7 +286,7 @@ flowchart LR
     subgraph JS["frontend/js"]
         A[api.js — fetch client + session/token]
         B[app.js — router · nav · action dispatch · boot]
-        P[pages.js — landing · auth · onboarding · journey · skills · recs · coach · assessments · dashboard · career · settings]
+        P[pages.js — landing · auth · onboarding · journey · skills · recs · coach · assessments · dashboard · achievements · leaderboard · career · settings]
         U[ui.js — canvas charts · bars · gauges]
         MO[motion.js — aurora · starfield · cursor · magnetic · tilt]
     end
@@ -242,7 +299,7 @@ flowchart LR
     MO --> M
 ```
 
-## 9. Dataset
+## 10. Dataset
 
 `data/` contains a curated, offline catalogue across 7 domains (AI/ML, Data Science,
 Data Analytics, Cybersecurity, Cloud, Software Dev, Web Dev):
@@ -255,7 +312,7 @@ Data Analytics, Cybersecurity, Cloud, Software Dev, Web Dev):
 - `resources.csv` — 31 micro-resources (articles, cheatsheets, labs)
 - `assessments.json` — 13 knowledge checks, 52 concept-tagged questions
 
-## 10. Installation
+## 11. Installation
 
 ```bash
 git clone <repo> && cd LearnPath-AI
@@ -263,7 +320,7 @@ python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\act
 pip install -r requirements.txt
 ```
 
-## 11. Environment Variables
+## 12. Environment Variables
 
 Copy `.env.example` to `.env` (all values optional — the app runs fully offline without any):
 
@@ -275,7 +332,7 @@ Copy `.env.example` to `.env` (all values optional — the app runs fully offlin
 | `EMBEDDING_PROVIDER` | `tfidf` | `tfidf` (offline) or `sentence-transformers` |
 | `DATABASE_PATH` | `data/learnpath.db` | SQLite location |
 
-## 12. Running Locally
+## 13. Running Locally
 
 ```bash
 python -m uvicorn app.server:app --port 8765
@@ -284,12 +341,12 @@ python -m uvicorn app.server:app --port 8765
 Open http://localhost:8765. Start with a **demo persona** (one click) or type your own
 goal. No API keys required. The same process serves the JSON API and the cinematic SPA.
 
-## 13. Demo Credentials
+## 14. Demo Credentials
 
 None required. Use the **"Try a demo profile"** tiles: Aspiring ML Engineer,
 Data Scientist, Cybersecurity Analyst, Cloud Engineer.
 
-## 14. Screenshots
+## 15. Screenshots
 
 Capture from the running app. The recommended shot list for a submission deck:
 
@@ -303,8 +360,11 @@ Capture from the running app. The recommended shot list for a submission deck:
 8. Progress Dashboard (today's mission, time planner, analytics)
 9. Career Readiness gauge + dimension bars
 10. What-If simulator
+11. Dashboard gamification card (level, XP bar, rank, streak, weekly XP)
+12. Achievements page (badges, weekly challenges, XP history)
+13. Leaderboard (medals, scope tabs: Global / This Week / This Month / Mastery / My Skill)
 
-## 15. Evaluation Methodology
+## 16. Evaluation Methodology
 
 No human-labeled ground-truth exists for "the ideal learning path", so the evaluation
 framework (`app/ml/evaluation.py`) runs a **synthetic benchmark** built from the
@@ -314,10 +374,10 @@ coverage, type diversity — are explicitly labeled synthetic; their purpose is 
 detection (are gap-covering items ranked above irrelevant ones?) and diversity health.
 The evaluator view lives in **Settings → System insights**.
 
-## 16. Testing
+## 17. Testing
 
 ```bash
-python -m pytest tests/ -q        # 68 tests
+python -m pytest tests/ -q        # 105 tests
 ```
 
 Coverage: profile parsing, skill normalization, recommendation ranking + explanations,
@@ -328,7 +388,14 @@ FastAPI demo flow over real HTTP** (persona → roadmap → skill intelligence �
 explainable recommendations → coach Q&A → assessment → adaptive re-planning → career
 readiness + what-if → SPA assets served).
 
-## 17. Limitations
+The **gamification suite** (`tests/test_gamification.py`, 37 tests) covers XP
+calculation, difficulty multipliers, duplicate-completion protection, assessment &
+improvement bonuses, level & rank math, deterministic badge conditions, streak
+calculation, weekly/monthly/mastery leaderboards, challenge completion & claim gating,
+XP-transaction creation, API responses, and **unauthorized XP manipulation** — the
+client can never submit an arbitrary XP value; the server is the only XP authority.
+
+## 18. Limitations
 
 - Embeddings are TF-IDF by default (deterministic, offline); sentence-transformers gives
   stronger semantics when installed.
@@ -339,7 +406,7 @@ readiness + what-if → SPA assets served).
 - Analytics are real (computed from learner state); "demo data" is only what personas
   pre-fill.
 
-## 18. Future Improvements
+## 19. Future Improvements
 
 - PostgreSQL persistence + multi-tenant auth
 - Fine-grained progress tracking per resource (watch/read state via linkbacks)
@@ -348,7 +415,7 @@ readiness + what-if → SPA assets served).
 - Spaced-repetition scheduling inside the time planner
 - Graph-RAG over learner cohorts ("learners like you")
 
-## 19. Project Structure
+## 20. Project Structure
 
 See the Architecture section above; the composition root is `app/services/engine.py`,
 the catalogue lives in `app/data/`, and the single FastAPI process in `app/server.py`
@@ -360,9 +427,12 @@ exposes a thin JSON API over the services while `frontend/` renders every page.
 `POST/GET /api/learners/{id}/roadmap` · `POST /api/learners/{id}/recommendations` ·
 `GET /api/learners/{id}/skills` · `GET /api/assessments/{id}` +
 `POST .../submit` · `POST /api/learners/{id}/coach` · `GET .../mission` ·
-`GET .../career` · `POST .../whatif` · `POST .../feedback` · `GET .../insights`.
+`GET .../career` · `POST .../whatif` · `POST .../feedback` · `GET .../insights` ·
+`GET .../gamification` · `GET .../xp-history` · `GET .../badges` · `GET .../streak` ·
+`GET /api/leaderboard?scope=…` · `GET /api/challenges/current` ·
+`POST /api/challenges/{id}/claim` · `POST .../mission/complete`.
 
-## 20. Team
+## 21. Team
 
 Built for the **HCLAmplified Round 2** challenge: *AI-Powered Personalized Learning Path
 Recommender*.

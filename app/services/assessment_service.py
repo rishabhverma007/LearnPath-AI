@@ -57,6 +57,35 @@ class AssessmentService:
         result["pass"] = result["score"] >= config.ASSESSMENT_PASS_SCORE
         result["strong"] = result["score"] >= config.ASSESSMENT_STRONG_SCORE
 
+        # --- LearnPath XP: assessment + performance bonus + improvement bonus ---
+        # capture the previous best BEFORE inserting this attempt so the
+        # improvement (comeback) bonus is computed correctly.
+        gam_result = {}
+        try:
+            from app.services.gamification_service import GamificationService
+
+            gs = GamificationService(self.repo)
+            prev_best = self.repo.best_attempt_for(learner.learner_id, assessment.assessment_id)
+            gam_result = gs.handle_event(
+                learner, "assessment_completed", assessment.assessment_id,
+                difficulty=assessment.difficulty,
+                assessment_score=result["score"],
+                prev_best_score=(prev_best or {}).get("score"),
+                is_remediation=self._is_remediation_attempt(learner, assessment.assessment_id),
+            )
+        except Exception:  # noqa: BLE001 - gamification must never break grading
+            pass
+        # remediation completed + passed re-check -> remediation XP (positive loop)
+        if gam_result and self._is_remediation_attempt(learner, assessment.assessment_id) \
+                and result["score"] >= config.ASSESSMENT_PASS_SCORE:
+            try:
+                gam_result["remediation_xp"] = gs.handle_event(
+                    learner, "remediation_completed", f"{assessment.assessment_id}_remediation"
+                )
+            except Exception:  # noqa: BLE001
+                pass
+        result["xp"] = gam_result
+
         # update the learner digital twin
         apply_assessment_result(learner, assessment.skill_id, result["score"], self.catalog)
         learner.assessment_history.append({
@@ -71,6 +100,14 @@ class AssessmentService:
                              f"{assessment.skill_id} score={result['score']:.0%}")
         self.repo.save_learner(learner)
 
+        # re-evaluate badges against the updated twin (mastery, assessment ace...)
+        try:
+            if gam_result and "new_badges" in gam_result:
+                extra = GamificationService(self.repo).evaluate_and_reward_badges(learner)
+                gam_result["new_badges"] = list(gam_result["new_badges"]) + list(extra)
+        except Exception:  # noqa: BLE001 - badges must never break grading
+            pass
+
         # adapt the roadmap
         if self.roadmaps is not None:
             try:
@@ -83,6 +120,16 @@ class AssessmentService:
                 result["roadmap_adapted"] = False
                 result["adaptation_notes"] = []
         return result
+
+    def _is_remediation_attempt(self, learner: Learner, assessment_id: str) -> bool:
+        """True when this assessment appears in a remediation phase of the roadmap."""
+        for p in (learner.roadmap or {}).get("phases", []):
+            if str(p.get("label", "")).lower() != "remediation":
+                continue
+            for item in p.get("items", []):
+                if item.get("item_id", "").endswith("_recheck") or assessment_id in item.get("item_id", ""):
+                    return True
+        return False
 
     # ------------------------------------------------------------------
     # AI micro-learning (10-minute lessons)

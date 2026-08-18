@@ -564,11 +564,12 @@ Pages.dashboard = {
   async render() {
     const learner = await loadLearner();
     const meta = await bootMeta();
-    const [missionData, careerData, skillsData, insightsData] = await Promise.all([
+    const [missionData, careerData, skillsData, insightsData, gamData] = await Promise.all([
       API.mission(learner.learner_id).catch(() => null),
       API.career(learner.learner_id).catch(() => null),
       API.skills(learner.learner_id).catch(() => null),
       API.insights(learner.learner_id).catch(() => null),
+      API.gamification(learner.learner_id).catch(() => null),
     ]);
     const role = (meta.roles || {})[learner.target_role] || { title: learner.target_role };
 
@@ -587,6 +588,7 @@ Pages.dashboard = {
           <div class="card-title">${UI.esc(m.date_label)} · ${m.total_minutes} min</div>
           <span class="tag">${m.focus ? "focus: " + UI.esc(m.focus) : "steady progress"}</span>
         </div>
+        <button class="btn btn-primary btn-sm" data-action="complete-mission" style="margin-top:10px">✓ Complete today's mission (+25 XP)</button>
         <div style="display:flex;flex-direction:column;gap:10px">
           ${m.steps.map((s, i) => `<div class="rt-item reveal" data-delay="${i * 50}">
             <span class="mark cur">${i + 1}</span>
@@ -625,6 +627,27 @@ Pages.dashboard = {
         ${UI.metric("Velocity", skillsData ? Math.round((skillsData.learning_velocity || 0) * 100) + "%" : "—", "avg proficiency")}
         ${UI.metric("Weekly time", learner.weekly_hours + "h", "planned")}
       </div>
+
+      <div class="gam-dash glass-strong reveal" data-delay="30">
+        <div class="gd-level">
+          <div class="gd-level-badge">LEVEL ${gamData ? gamData.level : "—"}</div>
+          <div class="gd-title">${gamData ? UI.esc(gamData.level_title) : "Explorer"}</div>
+          <div class="gd-xp">⚡ ${gamData ? gamData.total_xp.toLocaleString() : "0"} <span class="faint">XP</span></div>
+          ${gamData ? `<div class="xp-bar" style="margin-top:8px"><div class="xp-fill" data-w="${Math.round(gamData.level_progress * 100)}" style="width:${Math.round(gamData.level_progress * 100)}%"></div></div>
+          <div class="faint" style="font-size:11.5px;margin-top:5px">${Math.round(gamData.level_progress * 100)}% into level ${gamData.level} · ${gamData.xp_to_next_level > 0 ? gamData.xp_to_next_level.toLocaleString() + " XP to " + (gamData.level + 1) : "max level"}</div>` : ""}
+        </div>
+        <div class="gd-stats">
+          ${UI.metric("Global rank", gamData && gamData.leaderboard_position ? "#" + gamData.leaderboard_position : "—", gamData && gamData.leaderboard_size ? "of " + gamData.leaderboard_size + " learners" : "no cohort yet")}
+          ${UI.metric("Streak", gamData ? "🔥 " + gamData.current_streak + "d" : "—", gamData && gamData.longest_streak ? "longest " + gamData.longest_streak + "d" : "start today")}
+          ${UI.metric("Weekly XP", gamData ? gamData.weekly_xp.toLocaleString() : "—", "this week")}
+          ${UI.metric("Badges", gamData ? gamData.badge_count : "—", gamData ? "earned" : "")}
+        </div>
+        <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-sm" data-action="goto" data-page="achievements">🏅 Achievements</button>
+          <button class="btn btn-ghost btn-sm" data-action="goto" data-page="leaderboard">🏆 Leaderboard</button>
+        </div>
+      </div>
+
       <div class="grid grid-2" style="align-items:start;margin-top:26px">
         <div class="glass reveal" style="padding:22px">
           <div class="card-title">Today's learning mission</div>
@@ -827,6 +850,169 @@ Pages.settings = {
     });
   },
 };
+/* ================================================================
+   ACHIEVEMENTS — LearnPath XP, level, badges, streaks, history
+   ================================================================ */
+Pages.achievements = {
+  nav: { icon: "🏅", label: "Achievements" },
+  gate: "learner",
+  async render() {
+    const learner = await loadLearner();
+    const [g, history, badgeData] = await Promise.all([
+      API.gamification(learner.learner_id).catch(() => null),
+      API.xpHistory(learner.learner_id).catch(() => null),
+      API.badges(learner.learner_id).catch(() => null),
+    ]);
+    if (!g) return UI.empty("Gamification data unavailable.");
+
+    const pct = Math.round(g.level_progress * 100);
+    const bar = `<div class="xp-bar"><div class="xp-fill" data-w="${pct}" style="width:${pct}%"></div></div>`;
+    const next = g.xp_to_next_level > 0
+      ? `<div class="xp-next">${g.xp_to_next_level.toLocaleString()} XP to <b>${g.level + 1}</b></div>`
+      : `<div class="xp-next ok">Max level reached — incredible!</div>`;
+
+    // badges grid
+    const defs = badgeData && badgeData.badges ? badgeData.badges : (g.badge_definitions || []);
+    const earnedSet = new Set(g.badges || []);
+    const badgeHtml = defs.map((b) => `
+      <div class="badge-card ${earnedSet.has(b.badge_id) ? "earned" : "locked"}" data-tilt>
+        <div class="bc-icon">${b.icon}</div>
+        <div class="bc-name">${UI.esc(b.name)}</div>
+        <div class="bc-desc">${UI.esc(b.description)}</div>
+        ${earnedSet.has(b.badge_id) ? `<div class="bc-earned">✓ earned</div>` : `<div class="bc-locked">locked</div>`}
+      </div>`).join("");
+
+    // challenges
+    const ch = (g.challenges || []).map((c) => {
+      const p = Math.min(100, Math.round((c.progress / Math.max(1, c.target)) * 100));
+      const done = c.completed;
+      return `<div class="glass challenge-card reveal" style="padding:18px 20px">
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap">
+          <div>
+            <div class="card-title">${UI.esc(c.title)} ${done ? "✓" : ""}</div>
+            <div class="card-sub">${UI.esc(c.description)}</div>
+          </div>
+          <span class="badge ${done ? "ok" : "type"}">+${c.xp_reward} XP</span>
+        </div>
+        <div style="margin-top:12px"><div class="xp-bar"><div class="xp-fill" style="width:${p}%"></div></div></div>
+        <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11.5px" class="faint">
+          <span>${p}% · ${c.progress.toFixed(1)} / ${c.target} ${c.challenge_type.replace(/_/g, " ")}</span>
+          ${done && !c.claimed ? `<button class="chip-btn" data-action="claim-challenge" data-id="${c.challenge_id}">Claim reward →</button>` : (c.claimed ? `<span class="mono ok">claimed</span>` : "")}
+        </div>
+      </div>`;
+    }).join("");
+
+    // xp history (recent 12)
+    const txs = (history && history.transactions ? history.transactions : []).slice(0, 12);
+    const histHtml = txs.length ? txs.map((t, i) => `
+      <div class="rt-item reveal" data-delay="${i * 30}">
+        <span class="mark done">+${t.final_xp}</span>
+        <div style="flex:1">
+          <div class="title" style="font-size:13px">${UI.esc((t.reason || t.activity_type || "xp").replace(/_/g, " "))}</div>
+          <div class="meta">${UI.esc((t.created_at || "").slice(0, 10))} · base ${t.base_xp} · bonus ${t.bonus_xp} · ×${t.multiplier}</div>
+        </div>
+      </div>`).join("") : UI.empty("No XP yet — complete your first learning activity.");
+
+    // breakdown chart
+    const breakdown = g.breakdown || [];
+    const bdHtml = breakdown.length ? breakdown.map((b) => UI.bar(b.activity_type.replace(/_/g, " "), Math.min(1, b.xp / Math.max(1, breakdown[0].xp)), { pct: b.xp })).join("") : "";
+
+    return `
+      <section class="hero">
+        <div class="reveal"><div class="eyebrow">Learn · Build · Master · Rise</div>
+        <h1 class="display" style="font-size:clamp(30px,4.2vw,52px)">Achieve <span class="grad">& rise</span></h1>
+        <p class="sub">Outcome-based learning gamification — XP rewards mastery and consistency, never busywork.</p></div>
+
+        <div class="level-card glass-strong reveal" data-delay="40">
+          <div class="lc-row">
+            <div>
+              <div class="lc-level">LEVEL ${g.level}</div>
+              <div class="lc-title">${UI.esc(g.level_title)}</div>
+            </div>
+            <div class="lc-xp">⚡ ${g.total_xp.toLocaleString()} <span class="faint">XP</span></div>
+          </div>
+          <div style="margin-top:14px">${bar}</div>
+          <div style="display:flex;justify-content:space-between;margin-top:8px;align-items:center;flex-wrap:wrap;gap:6px">
+            <span class="mono">${pct}% into level ${g.level}</span>${next}
+          </div>
+          <div class="lc-stats">
+            ${UI.metric("Global rank", g.leaderboard_position ? "#" + g.leaderboard_position : "—", g.leaderboard_size ? `of ${g.leaderboard_size} learners` : "no cohort yet")}
+            ${UI.metric("Streak", "🔥 " + g.current_streak + "d", g.longest_streak ? `longest ${g.longest_streak}d` : "start today")}
+            ${UI.metric("Weekly XP", g.weekly_xp.toLocaleString(), "this week")}
+            ${UI.metric("Badges", g.badge_count, `of ${defs.length}`)}
+          </div>
+        </div>
+
+        <div class="section-head"><h2 class="h2">Weekly challenges</h2></div>
+        <div class="grid grid-2" style="align-items:start">${ch || UI.empty("No challenges this week.")}</div>
+
+        <div class="section-head"><h2 class="h2">Badges</h2></div>
+        <div class="grid grid-4" style="align-items:start">${badgeHtml || UI.empty("No badges defined yet.")}</div>
+
+        <div class="section-head"><h2 class="h2">XP history</h2></div>
+        <div class="grid grid-2" style="align-items:start">
+          <div class="glass reveal" style="padding:22px">${histHtml}</div>
+          <div class="glass reveal" data-delay="60" style="padding:22px">
+            <div class="card-title">XP by activity</div>
+            <div style="height:12px"></div>${bdHtml || UI.empty("No XP breakdown yet.")}
+          </div>
+        </div>
+      </section>`;
+  },
+};
+
+/* ================================================================
+   LEADERBOARD — global / weekly / monthly / skill / mastery
+   ================================================================ */
+Pages.leaderboard = {
+  nav: { icon: "🏆", label: "Leaderboard" },
+  gate: "learner",
+  async render() {
+    const learner = await loadLearner();
+    const scopes = [
+      ["global", "🌍 Global"], ["weekly", "📅 This Week"], ["monthly", "🗓️ This Month"],
+      ["mastery", "🧠 Mastery"], ["skill", "⚡ My Skill"],
+    ];
+    const current = Store.leaderboardScope || "global";
+    const segHtml = scopes.map(([id, label]) =>
+      `<button class="${id === current ? "active" : ""}" data-action="lb-scope" data-value="${id}">${label}</button>`).join("");
+    const lb = await API.leaderboard(learner.learner_id, current).catch(() => null);
+    if (!lb) return UI.empty("Leaderboard unavailable.");
+
+    const medal = ["🥇", "🥈", "🥉"];
+    const rows = (lb.rows || []).map((r, i) => {
+      const isMe = r.learner_id === learner.learner_id;
+      const val = lb.scope === "mastery"
+        ? `${r.skills_mastered} skills · ${r.readiness}%`
+        : lb.scope === "skill"
+          ? `${r.value}%`
+          : `${r.xp.toLocaleString()} XP`;
+      return `<div class="lb-row ${isMe ? "me" : ""} ${i < 3 ? "podium" : ""}">
+        <div class="lb-rank">${i < 3 ? medal[i] : "#" + r.rank}</div>
+        <div class="lb-name">${isMe ? `<b>You</b>` : UI.esc(r.name)}</div>
+        <div class="lb-level">Lv ${r.level}</div>
+        <div class="lb-val mono">${val}</div>
+        <div class="lb-streak">${r.streak ? "🔥" + r.streak : ""}</div>
+      </div>`;
+    }).join("");
+
+    return `
+      <section class="hero">
+        <div class="reveal"><div class="eyebrow">Competitive standing · fair weekly resets</div>
+        <h1 class="display" style="font-size:clamp(30px,4.2vw,52px)">🏆 Leader<span class="grad">board</span></h1>
+        <p class="sub">Weekly and monthly boards reset so new learners can always compete. The mastery board ranks real skill development, not just points.</p></div>
+        <div style="margin-top:16px" class="reveal" data-delay="40"><div class="seg" style="flex-wrap:wrap">${segHtml}</div></div>
+        <div class="glass reveal" data-delay="60" style="padding:20px 22px;margin-top:22px">
+          <div class="lb-head"><span class="faint" style="text-transform:uppercase;font-size:11px;letter-spacing:0.08em">${lb.scope === "mastery" ? "🧠 Mastery board — by skills mastered" : lb.scope === "skill" ? "⚡ Skill board — by proficiency" : lb.scope === "weekly" ? "📅 This week's XP" : lb.scope === "monthly" ? "🗓️ This month's XP" : "🌍 All-time XP"}</span></div>
+          ${rows || UI.empty("No learners on this board yet.")}
+        </div>
+      </section>`;
+  },
+  mount(root) {
+    // persist scope choice when switching tabs (handled by lb-scope action)
+  },
+};
+
 /* ================================================================
    LANDING — cinematic marketing page
    ================================================================ */
