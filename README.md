@@ -2,439 +2,389 @@
 
 ### Your Goal. Your Skills. Your Adaptive Learning Journey.
 
-LearnPath AI is an **AI-powered Personalized Learning Path Recommender** — an adaptive
-**AI Learning Operating System** that understands a learner's goal, current capabilities,
-interests, constraints and history; identifies skill gaps; builds an **explainable,
-prerequisite-aware learning journey**; and continuously adapts the roadmap from
-assessments, feedback and behavior.
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Tests](https://img.shields.io/badge/Tests-112%20passing-brightgreen?style=flat-square)](#testing)
+[![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
 
-> LearnPath AI is not a course recommender. It is an adaptive AI learning companion
-> that continuously transforms a learner's goal into an executable, personalized and
-> measurable journey.
+> **LearnPath AI** is an AI-powered adaptive learning operating system that transforms a learner's goal into an executable, personalized, measurable journey. It is not a course recommender — it is an AI learning companion that continuously adapts.
 
 ---
 
-## 1. Problem Statement
-
-Thousands of courses, projects and resources exist, but learners don't know **what to
-learn next**. Generic recommenders surface popular or similar courses; they ignore:
-
-- **Skill gaps** — what the learner actually lacks for their goal,
-- **Sequencing** — prerequisites that make a path learnable,
-- **Constraints** — weekly hours, deadlines, learning preferences,
-- **Progress** — whether the learner is actually improving,
-- **Adaptation** — that a struggling learner needs a different path than a thriving one.
-
-## 2. Solution Overview
-
-LearnPath AI replaces "User → LLM → random courses" with a deterministic, explainable
-pipeline:
-
-```mermaid
-flowchart LR
-    A[User Goal] --> B[NLU Extraction]
-    B --> C[Learner Digital Twin]
-    C --> D[Goal Decomposition]
-    D --> E[Required Skill Graph]
-    C --> F[Current Skill Estimation]
-    E --> G[Skill Gap Analysis]
-    F --> G
-    G --> H[Hybrid Retrieval & Ranking]
-    H --> I[Prerequisite Validation]
-    I --> J[Personalized Roadmap]
-    J --> K[Learning]
-    K --> L[Assessment]
-    L --> M{Pass?}
-    M -- "Weak (<60%)" --> N[Remediation Phase]
-    N --> J
-    M -- "Strong (>=85%)" --> O[Acceleration]
-    O --> J
-    M -- "Pass" --> P[Feedback]
-    P --> C
-    K --> P
-```
-
-The LLM is used only where language matters (conversational understanding,
-explanations, coaching, content generation). Everything deterministic — prerequisite
-ordering, gap math, ranking, scheduling, adaptation — uses rule/graph engines and
-algorithms.
-
-## 3. Key Features
-
-| Area | Features |
-|---|---|
-| **Landing + Auth** | Cinematic marketing landing page; sign-up / sign-in with PBKDF2-hashed passwords + session tokens (stdlib only); **one-click guest demo mode** — evaluators explore personas with no account |
-| **Onboarding** | Conversational NL intake with an editable "AI Understanding" panel; one-click demo personas |
-| **Learner Digital Twin** | Dynamic profile: skills + confidence, interests, preferences, hours, deadline, history, feedback |
-| **Skill Intelligence** | 62-skill ontology (NetworkX DAG), prerequisite closure, topological ordering, gap heatmap, radar, before/after |
-| **Hybrid Recommender** | 8 explainable signals, configurable weights, MMR diversity, machine-readable reasons + "Why this?" |
-| **Learning Path** | Constrained scheduling: prerequisites → phases → weeks → deadline feasibility; Balanced/Accelerated/Flexible modes |
-| **AI Coach** | RAG assistant that knows your profile, roadmap, gaps and assessments; honest when it doesn't know |
-| **Assessments** | 13 knowledge checks (MCQ/multi-select/scenario/coding), concept-level weak-area detection |
-| **Adaptive Engine** | Failing a check inserts a Remediation phase (micro-lesson → practice → re-check); strong scores accelerate |
-| **Career Readiness** | 0–100 index across Technical / Projects / Problem Solving / Deployment / Portfolio + "what's needed for 90%" |
-| **Daily Mission** | Today's concrete plan sized to weekly hours; smart weekly time planner with missed-session recovery |
-| **What-If Simulator** | Switch target role → see transferable vs additional skills and extra time |
-| **Micro-learning** | "Learn this in 10 minutes" lessons for weak concepts; AI project generator |
-| **LearnPath XP** | Outcome-based gamification: XP ledger, levels, ranks, streaks, badges, weekly challenges |
-| **Leaderboards** | Fair All-Time / Weekly / Monthly / Skill / Mastery boards — weekly & monthly reset so new learners can compete; opt-out privacy toggle in Settings |
-| **Reliability** | Offline-first: full local fallback for LLM & embeddings; schema validation; graceful failures |
-
-## 4. Architecture
-
-```mermaid
-flowchart TB
-    subgraph Client["Frontend — Cinematic SPA (vanilla JS)"]
-        UI[Page Grid + 10 Views + Router] --> API[api.js client]
-        MOTION[Canvas motion layer · cursor · tilt · curtain]
-    end
-    subgraph Server["FastAPI — app/server.py (single process)"]
-        API --> ROUTES[API Routes]
-        ROUTES --> ENGINE[Engine — composition root]
-        ENGINE --> SVCS[Learner · Roadmap · Recommendation · Assessment services]
-        SVCS --> DB[(SQLite · learner digital twin)]
-    end
-    subgraph AI["Hybrid AI layer"]
-        LLM["LLMProvider: Local (offline) | OpenAI"]
-        EMB["EmbeddingProvider: TF-IDF | sentence-transformers"]
-        GRAPH[SkillGraph · NetworkX DAG · 62 skills]
-        REC[Hybrid recommender · 8 factors + MMR]
-        RULES[Rule engine · gaps · scheduling · adaptation]
-    end
-    ENGINE --> AI
-    AI --> CAT[data/ catalogue · courses · projects · resources · assessments]
-    DB --> CAT
-```
-
-```
-app/
-├── server.py               # FastAPI: JSON API + serves the SPA (single process)
-├── config.py               # Weights, thresholds, modes, personas (env-overridable)
-├── ai/
-│   ├── embeddings.py       # Embedder abstraction: TF-IDF (default) | sentence-transformers
-│   ├── llm.py              # LLMProvider abstraction: Local (offline) | OpenAI
-│   ├── extraction.py       # Rule-based + LLM-upgraded profile parsing (validated JSON)
-│   ├── prompts.py          # Centralized prompt templates (system/context/knowledge/question)
-│   └── rag.py              # Knowledge base + context-aware CoachService
-├── ml/
-│   ├── recommender.py      # Hybrid scoring, MMR diversification, explanations
-│   ├── skill_gap.py        # Gap engine (via SkillGraph)
-│   ├── path_optimizer.py   # Roadmap generation + adaptive remediation
-│   ├── career_readiness.py # Readiness index
-│   ├── daily_mission.py    # Today's mission + smart time planner
-│   ├── what_if.py          # Goal-switch simulator
-│   ├── personalization.py  # Proficiency estimation, preference adaptation
-│   ├── evaluation.py       # Synthetic-benchmark metrics (Precision/Recall/NDCG/Diversity)
-│   ├── gamification.py     # XP engine: rules, levels, ranks, streaks, badges, leaderboards
-│   ├── gamification_service.py  # Event pipeline: XP award → level-up → badges → challenges
-│   └── demo_seed.py        # Realistic demo learners + gamification state for the leaderboard
-├── graph/skill_graph.py    # NetworkX DAG: prerequisites, closures, topological order
-├── data/                   # Catalogue: skills, roles, courses, projects, resources, assessments
-├── database/               # SQLite repository + Learner Digital Twin model
-├── services/               # engine (composition root) + learner/roadmap/recommendation/assessment services
-├── tests/                  # 112 pytest tests incl. end-to-end FastAPI demo flow + gamification + opt-out suite
-└── frontend/               # Cinematic SPA (zero frameworks):
-    ├── index.html          #   shell + motion layers (universe canvas, grain, vignette, cursor)
-    ├── css/styles.css      #   deep-space design system + glassmorphism
-    └── js/                 #   api.js (client) · motion.js (aurora/starfield/cursor/tilt/curtain)
-                            #   ui.js (charts + XP/badge FX) · pages.js (13 views incl. landing, auth, Achievements, Leaderboard)
-                            #   app.js (router/page grid/boot)
-```
-
-**AI architecture (hybrid):**
-
-| Component | Role | Implementation |
-|---|---|---|
-| LLM | conversation, explanation, coaching, generation | `LLMProvider` — Local (offline) or OpenAI-compatible |
-| Embeddings | semantic retrieval & matching | `EmbeddingProvider` — TF-IDF (offline, cached) or sentence-transformers |
-| Graph engine | prerequisites, ordering, constraints | NetworkX DAG over 62 skills |
-| Recommender | ranking, personalization, diversity | weighted 8-factor scoring + Maximal Marginal Relevance |
-| Rule engine | gap math, scheduling, adaptation | deterministic functions (no LLM for math) |
-
-## 5. AI / ML Methodology
-
-- **Embeddings**: catalogue items (courses, projects, resources, assessments) are indexed
-  with TF-IDF vectors (sublinear TF, 1–2 grams); queries are the learner goal + role
-  summary. The index is disk-cached (`data/embeddings_cache/`) so restarts are instant.
-  With `EMBEDDING_PROVIDER=sentence-transformers` the same interface uses a MiniLM model.
-- **Skill graph**: 62 skills, 80+ prerequisite edges. Topological ordering guarantees
-  "prerequisites before dependents"; a greedy *lexicographic* topological sort with
-  role-importance keys produces a priority-aware valid order.
-- **LLM**: used only for (a) profile extraction (structured JSON, schema-validated, merged
-  over rule output), (b) coaching answers grounded in retrieved knowledge (RAG),
-  (c) micro-lessons/projects/assessment generation. If the API is unavailable the app
-  runs fully in local mode — deterministic and hallucination-free.
-
-## 6. Recommendation Methodology
-
-`Recommendation Score = Σ wᵢ · factorᵢ` with configurable weights
-(`app/config.py`, default sums to 1.0):
-
-| Factor | Weight | Meaning |
-|---|---|---|
-| Semantic relevance | 0.30 | TF-IDF cosine between goal+role and item |
-| Skill-gap coverage | 0.20 | how much missing/weak skill it addresses |
-| Goal alignment | 0.15 | contribution to the role's competency map |
-| Prerequisite fit | 0.10 | learner readiness for this item |
-| Difficulty fit | 0.10 | distance from learner's estimated level |
-| Preference fit | 0.05 | content format vs learning preference |
-| Time fit | 0.05 | duration vs weekly budget |
-| Feedback signal | 0.05 | likes/skips/completions history |
-
-A **Maximal Marginal Relevance** pass (`λ=0.7`) diversifies the top-K so the list mixes
-courses, projects, resources and knowledge checks. Every result carries
-machine-readable reason scores, and the UI renders a human **"Why this?"** built from
-those actual signals — never fabricated LLM prose.
-
-## 7. Adaptive Learning Methodology
+## How It Works — System Flow
 
 ```mermaid
 flowchart TD
-    A[Learner takes assessment] --> B{Score}
-    B -- "< 60%" --> C[Weak concepts detected]
-    C --> D[Insert Remediation phase]
-    D --> D1[Mini-lesson] --> D2[Practice resource] --> D3[Re-assessment]
-    D3 --> A
-    B -- "60–84%" --> E[Continue roadmap]
-    B -- ">= 85%" --> F[Accelerate: remove redundant repetition]
-    F --> G[Updated roadmap]
-    E --> H[Feedback: likes / skips / difficulty]
-    G --> H
-    H --> I[Preference weights updated]
-    I --> J[Future recommendations adapt]
+    subgraph Input["🎯 Learner Input"]
+        A[Type a goal<br/>or pick a demo persona]
+    end
+
+    subgraph Extraction["🧠 AI Understanding"]
+        B[NLU Extraction<br/>goal · role · skills · constraints]
+        C[Learner Digital Twin<br/>dynamic profile with confidence scores]
+    end
+
+    subgraph Intelligence["📊 Intelligence Layer"]
+        D[Skill Graph<br/>62 skills · 80+ prerequisite edges]
+        E[Gap Analysis<br/>what's missing vs target role]
+        F[Hybrid Recommender<br/>8 explainable factors · MMR diversity]
+    end
+
+    subgraph Roadmap["🗺️ Personalized Roadmap"]
+        G[Constrained Scheduler<br/>prerequisites → phases → weeks]
+        H[Balanced · Accelerated · Flexible modes]
+    end
+
+    subgraph Learning["📚 Active Learning"]
+        I[Today's Mission<br/>sized to weekly hours]
+        J[Assessments<br/>MCQ · multi-select · scenario]
+        K[AI Coach<br/>RAG-grounded answers]
+    end
+
+    subgraph Adaptation["🔄 Adaptive Loop"]
+        L{Score?}
+        M["Weak < 60%<br/>→ Remediation phase"]
+        N["Pass 60–84%<br/>→ Continue"]
+        O["Strong ≥ 85%<br/>→ Accelerate"]
+        P[Feedback loop<br/>likes · skips · difficulty]
+    end
+
+    subgraph Gamification["🏆 LearnPath XP"]
+        Q[XP Ledger<br/>immutable transactions]
+        R[Levels · Ranks · Streaks]
+        S[Badges · Weekly Challenges]
+        T[Fair Leaderboards<br/>Weekly · Monthly · Mastery]
+    end
+
+    A --> B --> C --> D --> E --> F --> G --> H
+    H --> I --> J --> L
+    L -- "Weak" --> M --> G
+    L -- "Pass" --> N --> I
+    L -- "Strong" --> O --> G
+    I --> P --> F
+    J --> Q --> R --> S --> T
+    K -.-> C
+    K -.-> E
+    K -.-> G
 ```
 
-- **Assessment**: 4–5 questions per check, tagged with concepts. Failing (<60%) exposes
-  **weak concepts**; passing strongly (≥85%) enables acceleration.
-- **Weak result** → a `Remediation` phase is inserted before the next milestone:
-  micro-lesson → practice resource → re-assessment. The learner sees *"Your path was
-  updated"* with the exact reasons.
-- **Strong result** → redundant repetition is removed.
-- **Feedback loop**: likes/skips/difficulty update the preference weights used by the
-  recommender, so "keeps skipping long videos" shifts future recommendations toward
-  shorter hands-on items.
+---
 
-## 8. LearnPath XP — Outcome-Based Gamification
+## What Makes It Different
 
-> *Learn. Build. Master. Rise.* — LearnPath AI rewards **learning progress, mastery and
-> consistency**, never busywork. No XP for logging in, viewing pages, or repeated clicks;
-> every reward is server-calculated, auditable and anti-farm protected.
-
-Every meaningful learning action emits a **LearningEvent** into a centralized pipeline:
-
-```mermaid
-flowchart LR
-    E[LearningEvent] --> XP[XP Engine: base + bonus + difficulty multiplier]
-    XP --> D{Already rewarded?}
-    D -- "yes → 0 XP" --> L[XP Ledger]
-    D -- "no" --> L[XP Ledger - immutable transaction]
-    L --> LV[Level Calculator - progression curve]
-    LV --> B[Badge Engine - deterministic conditions]
-    B --> LB[Leaderboard Update]
-    LB --> C[Weekly Challenge Progress]
-    C --> S[Streak + milestones]
-```
-
-**Key mechanics**
-
-| Mechanic | Details |
+| Generic Recommenders | LearnPath AI |
 |---|---|
-| **XP rules** | Configurable in `app/config.py` — e.g. course +100, project +200, capstone +500, assessment +30, daily mission +25, skill mastery +100, remediation +40 |
-| **Quality multiplier** | Assessments & projects scale by performance: score 60–74% → +10 bonus, 75–84% → +25, 85–94% → +40, 95–100% → +60; difficulty multipliers 1.0×–2.0× |
-| **Anti-farming** | Duplicate completion = 0 XP; daily mission once per day; challenge claims only when genuinely completed; **no arbitrary `POST /xp` endpoint** — the client only reports events, the server computes rewards |
-| **XP ledger** | Every reward writes an immutable-style `XPTransaction` (base, bonus, multiplier, final, reason, timestamp) — the UI explains "How did I earn this XP?" |
-| **Levels** | Curved thresholds (Explorer 0 → Master 15,000 XP) with a progress bar, "X XP to next level", and level-up detection |
-| **Ranks** | Separate competitive hierarchy (Novice → Grandmaster) from levels |
-| **Streaks** | Only *meaningful* activity counts (course, assessment, project, mission); milestones at 3/7/14/30/60/100 days award bonus XP + badges |
-| **Badges** | 18 deterministic badges (First Step, Knowledge Seeker, Assessment Ace, On Fire, Path Explorer, Capstone Champion…), auto-awarded, re-evaluated so missed events self-heal |
-| **Challenges** | Weekly challenges derived from the learner's own roadmap (e.g. "Complete 3 assessments this week") — claimable only when complete |
-| **Comeback bonus** | Improve from a failed assessment to a passing re-assessment → +50 improvement XP. Failure is never punished |
+| "You might also like…" | Skill gap analysis → prerequisite-aware sequencing |
+| One-size-fits-all paths | Adaptive: weak scores insert remediation, strong scores accelerate |
+| No progress tracking | Daily mission, streaks, XP ledger, career readiness gauge |
+| No explainability | Every recommendation has machine-readable "Why this?" reasons |
+| Requires internet | Fully offline — local LLM fallback, TF-IDF embeddings, zero API keys |
+| Static content | Continuously adapts from assessments, feedback, and behavior |
 
-**Leaderboards** — fair by design: All-Time, **Weekly** and **Monthly** (XP earned in the
-period, so new learners can compete), per-**Skill** (proficiency) and the **Mastery Board**
-(skills mastered + career readiness). Demo learners (Alex, Priya, Rahul…) are clearly
-labeled as demo data; the current learner is always highlighted and rank movement
-(↑/↓/→) is tracked from XP-transaction timestamps.
+---
 
-The AI Coach is gamification-aware: ask *"What do I need to reach Level 8?"* or *"How
-can I improve my ranking?"* and it answers from the learner's real XP ledger — and it
-steers XP-seeking learners back to meaningful progress rather than farming.
+## Key Features
 
-**Gamification API** — `GET /api/learners/{id}/gamification` (XP, level, rank, streak,
-badges, next-level) · `GET .../xp-history` (ledger) · `GET .../badges` · `GET .../streak` ·
-`GET /api/leaderboard?scope=global|weekly|monthly|skill|cohort|mastery` ·
-`GET /api/challenges/current` · `POST /api/challenges/{id}/claim` ·
-`POST /api/learners/{id}/mission/complete`.
+### 🎯 Smart Onboarding
+Conversational goal intake with an editable "AI Understanding" panel. One-click demo personas (ML Engineer, Data Scientist, Cybersecurity Analyst, Cloud Engineer).
 
-## 9. Tech Stack
+### 📊 Skill Intelligence
+62-skill ontology with prerequisite closure, topological ordering, gap heatmap, radar chart, and before/after proficiency bars.
 
-**Backend** — Python 3.11 · FastAPI + Uvicorn · scikit-learn · NetworkX · Pandas · NumPy ·
-SQLite (stdlib `sqlite3`) · pytest + httpx · optional `openai` / `sentence-transformers`.
+### 🗺️ Adaptive Roadmap
+Constrained scheduling: prerequisites → phases → weeks → deadline feasibility. Three modes — Balanced, Accelerated, Flexible — with live re-planning.
 
-**Frontend** — a hand-built cinematic SPA (no framework, no build step): vanilla ES modules
-for routing and views, canvas-rendered aurora/starfield motion layer, custom fluid cursor,
-magnetic buttons, 3D-tilt glass cards, curtain page transitions, and scroll-reveal
-animation. All styling is custom CSS (Space Grotesk / Inter / JetBrains Mono).
+### 🎯 Explainable Recommendations
+8-factor scoring (semantic relevance, gap coverage, goal alignment, prerequisite fit, difficulty fit, preference fit, time fit, feedback signal) with MMR diversity. Every result carries a "Why this?" explanation.
+
+### 🧠 Knowledge Assessments
+13 knowledge checks with MCQ/multi-select/scenario/coding questions. Concept-level weak-area detection feeds directly into the adaptive engine.
+
+### 💬 AI Coach
+RAG-grounded assistant that knows your profile, roadmap, gaps, and assessment history. Honest when it doesn't know.
+
+### 🚀 Career Readiness
+0–100 readiness index across Technical Skills, Projects, Problem Solving, Deployment, and Portfolio. "What's needed for 90%?" simulator.
+
+### 🏆 LearnPath XP
+Outcome-based gamification: XP ledger, levels, ranks, streaks, 18 badges, weekly challenges. Anti-farm protected — server is the only XP authority.
+
+### 🏅 Fair Leaderboards
+All-Time, Weekly, Monthly, Skill, and Mastery boards. Weekly & monthly XP resets so new learners can always compete. Opt-out privacy toggle.
+
+---
+
+## Architecture
 
 ```mermaid
-flowchart LR
-    subgraph Shell["index.html"]
-        M[Motion layers: universe canvas · grain · vignette · cursor · curtain]
-        N[Top navigation · brand · learner chip]
-        V["#view mount point"]
+flowchart TB
+    subgraph Frontend["🖥️ Frontend — Cinematic SPA"]
+        HTML["index.html<br/>shell + motion layers"]
+        CSS["styles.css<br/>deep-space design system"]
+        JS["api.js · motion.js · ui.js · pages.js · app.js"]
+        Canvas["Canvas: aurora nebula · starfield · shooting stars"]
     end
-    subgraph JS["frontend/js"]
-        A[api.js — fetch client + session/token]
-        B[app.js — router · nav · action dispatch · boot]
-        P[pages.js — landing · auth · onboarding · journey · skills · recs · coach · assessments · dashboard · achievements · leaderboard · career · settings]
-        U[ui.js — canvas charts · bars · gauges]
-        MO[motion.js — aurora · starfield · cursor · magnetic · tilt]
+
+    subgraph Backend["⚡ Backend — FastAPI"]
+        API["app/server.py<br/>JSON API + static file server"]
+        Services["Services<br/>learner · roadmap · recommendation<br/>assessment · gamification"]
+        Engine["Engine<br/>composition root"]
     end
-    N --> B
-    B --> P
-    P --> A
-    P --> U
-    P --> MO
-    A --> S["FastAPI /api/*"]
-    MO --> M
+
+    subgraph AI["🤖 Hybrid AI Layer"]
+        LLM["LLMProvider<br/>Local (offline) | OpenAI"]
+        Embed["EmbeddingProvider<br/>TF-IDF | sentence-transformers"]
+        Graph["SkillGraph<br/>NetworkX DAG · 62 skills"]
+        Rec["Hybrid Recommender<br/>8 factors + MMR"]
+    end
+
+    subgraph Data["💾 Data Layer"]
+        SQLite["SQLite<br/>learner digital twin"]
+        Catalog["data/<br/>courses · projects · resources · assessments"]
+    end
+
+    HTML --> JS
+    CSS --> HTML
+    Canvas --> HTML
+    JS -->|fetch| API
+    API --> Engine
+    Engine --> Services
+    Engine --> AI
+    Services --> SQLite
+    AI --> Catalog
+    SQLite --> Catalog
 ```
 
-## 10. Dataset
+---
 
-`data/` contains a curated, offline catalogue across 7 domains (AI/ML, Data Science,
-Data Analytics, Cybersecurity, Cloud, Software Dev, Web Dev):
+## Tech Stack
 
-- `skills.csv` — 62 skills with category, difficulty, prerequisites, related skills
-- `career_roles.csv` + `career_role_skills.csv` — 10 roles with per-skill target proficiency
-- `courses.csv` — 52 courses with **verified external URLs** (Kaggle, Google, fast.ai, HF,
-  OWASP, official docs…) — no fabricated ratings or certifications
-- `projects.csv` — 25 projects with deliverables, dataset hints, evaluation guidance
-- `resources.csv` — 31 micro-resources (articles, cheatsheets, labs)
-- `assessments.json` — 13 knowledge checks, 52 concept-tagged questions
+| Layer | Technology |
+|---|---|
+| **Backend** | Python 3.11 · FastAPI · Uvicorn · scikit-learn · NetworkX · Pandas · NumPy · SQLite |
+| **Frontend** | Vanilla JS SPA · Canvas motion engine · CSS glassmorphism · Space Grotesk / Inter / JetBrains Mono |
+| **AI/ML** | TF-IDF embeddings · NetworkX DAG · 8-factor recommender · MMR diversity · RAG coaching |
+| **Testing** | pytest · httpx · 112 tests incl. full end-to-end FastAPI flow |
+| **Optional** | OpenAI API · sentence-transformers |
 
-## 11. Installation
+---
+
+## Installation
 
 ```bash
-git clone <repo> && cd LearnPath-AI
-python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+# Clone the repository
+git clone https://github.com/rishabhverma007/LearnPath-AI.git
+cd LearnPath-AI
+
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-## 12. Environment Variables
+---
 
-Copy `.env.example` to `.env` (all values optional — the app runs fully offline without any):
+## Configuration
 
-| Variable | Default | Purpose |
+Copy `.env.example` to `.env` — all values are optional (the app runs fully offline):
+
+```bash
+cp .env.example .env
+```
+
+| Variable | Default | Description |
 |---|---|---|
 | `LLM_PROVIDER` | `local` | `local` (offline) or `openai` |
-| `OPENAI_API_KEY` | — | enables real LLM (extraction, coaching, generation) |
-| `OPENAI_MODEL` | `gpt-4o-mini` | model name |
+| `OPENAI_API_KEY` | — | API key for OpenAI (enables richer coaching) |
+| `OPENAI_MODEL` | `gpt-4o-mini` | Model name |
 | `EMBEDDING_PROVIDER` | `tfidf` | `tfidf` (offline) or `sentence-transformers` |
-| `DATABASE_PATH` | `data/learnpath.db` | SQLite location |
+| `DATABASE_PATH` | `data/learnpath.db` | SQLite database path |
 
-## 13. Running Locally
+---
+
+## Running
 
 ```bash
 python -m uvicorn app.server:app --port 8765
 ```
 
-Open http://localhost:8765. Start with a **demo persona** (one click) or type your own
-goal. No API keys required. The same process serves the JSON API and the cinematic SPA.
+Open **http://localhost:8765** in your browser. No API keys required.
 
-## 14. Demo Credentials
+1. Click **"Try a demo profile"** or sign up
+2. Pick a persona or type your own goal
+3. Explore your personalized journey
 
-None required. Use the **"Try a demo profile"** tiles: Aspiring ML Engineer,
-Data Scientist, Cybersecurity Analyst, Cloud Engineer.
+---
 
-## 15. Screenshots
+## Project Structure
 
-Capture from the running app. The recommended shot list for a submission deck:
-
-1. Page Grid — clean standalone buttons for each section (no sidebar, no top nav bar)
-2. Onboarding hero + demo personas
-3. "AI Understanding" extraction panel
-4. Skill Intelligence radar + gap heatmap + before/after bars
-5. My Learning Journey roadmap timeline (8 phases, week ranges, statuses)
-6. Recommendations with an expanded "Why this?" panel
-7. Assessment result showing weak concepts + "Your path was updated" banner
-8. AI Coach conversation
-9. Progress Dashboard (today's mission, time planner, analytics)
-10. Career Readiness gauge + dimension bars
-11. What-If simulator
-12. Dashboard gamification card (level, XP bar, rank, streak, weekly XP)
-13. Achievements page (badges, weekly challenges, XP history)
-14. Leaderboard (medals, scope tabs: Global / This Week / This Month / Mastery / My Skill)
-
-## 16. Evaluation Methodology
-
-No human-labeled ground-truth exists for "the ideal learning path", so the evaluation
-framework (`app/ml/evaluation.py`) runs a **synthetic benchmark** built from the
-catalogue: items are *relevant* when their skills overlap the learner's role competency
-map and cover a gap skill. Reported metrics — Precision@K, Recall@K, NDCG@K, catalogue
-coverage, type diversity — are explicitly labeled synthetic; their purpose is regression
-detection (are gap-covering items ranked above irrelevant ones?) and diversity health.
-The evaluator view lives in **Settings → System insights**.
-
-## 17. Testing
-
-```bash
-python -m pytest tests/ -q        # 112 tests
+```
+LearnPath-AI/
+├── app/
+│   ├── server.py              # FastAPI: JSON API + SPA server (single process)
+│   ├── config.py              # Weights, thresholds, modes, personas
+│   ├── ai/
+│   │   ├── embeddings.py      # TF-IDF | sentence-transformers
+│   │   ├── llm.py             # Local (offline) | OpenAI provider
+│   │   ├── extraction.py      # NLU profile extraction
+│   │   ├── prompts.py         # Centralized prompt templates
+│   │   └── rag.py             # Knowledge base + Coach service
+│   ├── ml/
+│   │   ├── recommender.py     # 8-factor scoring + MMR diversity
+│   │   ├── path_optimizer.py  # Roadmap generation + adaptive remediation
+│   │   ├── career_readiness.py
+│   │   ├── daily_mission.py
+│   │   ├── what_if.py
+│   │   ├── gamification.py    # XP · levels · ranks · streaks · badges
+│   │   └── evaluation.py      # Synthetic benchmark metrics
+│   ├── graph/
+│   │   └── skill_graph.py     # NetworkX DAG: 62 skills, 80+ edges
+│   ├── data/                  # Catalogue loader + models
+│   ├── database/              # SQLite repository + Learner Digital Twin
+│   ├── services/              # Composition root + service layer
+│   └── utils/                 # Logging, helpers
+├── data/
+│   ├── skills.csv             # 62 skills with prerequisites
+│   ├── career_roles.csv       # 10 career roles
+│   ├── courses.csv            # 52 courses with verified URLs
+│   ├── projects.csv           # 25 hands-on projects
+│   ├── resources.csv          # 31 micro-resources
+│   └── assessments.json       # 13 knowledge checks (52 questions)
+├── frontend/
+│   ├── index.html             # SPA shell + motion layers
+│   ├── css/styles.css         # Deep-space design system
+│   └── js/
+│       ├── api.js             # Fetch client + session/token
+│       ├── motion.js          # Spring physics · cursor · tilt · parallax
+│       ├── ui.js              # Canvas charts · XP/badge effects
+│       ├── pages.js           # 13 page views
+│       └── app.js             # Router · page grid · boot
+├── tests/                     # 112 pytest tests
+├── requirements.txt
+├── .env.example
+└── README.md
 ```
 
-Coverage: profile parsing, skill normalization, recommendation ranking + explanations,
-prerequisite validation, roadmap ordering + feasibility, assessment scoring (MCQ,
-multi-select, malformed input), adaptive remediation & acceleration, invalid LLM output,
-LLM/embedding fallback, coach honesty, repository round-trips, and an **end-to-end
-FastAPI demo flow over real HTTP** (persona → roadmap → skill intelligence →
-explainable recommendations → coach Q&A → assessment → adaptive re-planning → career
-readiness + what-if → SPA assets served).
+---
 
-The **gamification suite** (`tests/test_gamification.py`, 37 tests) covers XP
-calculation, difficulty multipliers, duplicate-completion protection, assessment &
-improvement bonuses, level & rank math, deterministic badge conditions, streak
-calculation, weekly/monthly/mastery leaderboards, challenge completion & claim gating,
-XP-transaction creation, API responses, and **unauthorized XP manipulation** — the
-client can never submit an arbitrary XP value; the server is the only XP authority.
+## API Reference
 
-## 18. Limitations
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/auth/signup` | POST | Create account |
+| `/api/auth/signin` | POST | Sign in |
+| `/api/auth/guest` | POST | One-click demo mode |
+| `/api/auth/me` | GET | Current user |
+| `/api/auth/signout` | POST | Sign out |
+| `/api/meta` | GET | System metadata |
+| `/api/profile/analyze` | POST | NLU goal extraction |
+| `/api/learners` | POST | Create learner digital twin |
+| `/api/learners/{id}` | GET/PUT/DELETE | Learner CRUD |
+| `/api/learners/{id}/roadmap` | POST/GET | Generate / retrieve roadmap |
+| `/api/learners/{id}/recommendations` | POST | Ranked recommendations |
+| `/api/learners/{id}/skills` | GET | Skill profile + gaps |
+| `/api/learners/{id}/items/complete` | POST | Mark item complete (awards XP) |
+| `/api/learners/{id}/feedback` | POST | Like / skip / difficulty feedback |
+| `/api/learners/{id}/coach` | POST | AI Coach conversation |
+| `/api/learners/{id}/mission` | GET | Today's learning mission |
+| `/api/learners/{id}/career` | GET | Career readiness index |
+| `/api/learners/{id}/whatif` | POST | What-if role simulator |
+| `/api/assessments/{id}` | GET | Fetch assessment |
+| `/api/learners/{id}/assessments/{id}/submit` | POST | Submit + grade assessment |
+| `/api/learners/{id}/micro-lesson` | POST | Generate micro-lesson |
+| `/api/learners/{id}/gamification` | GET | XP, level, rank, streak, badges |
+| `/api/learners/{id}/xp-history` | GET | XP transaction ledger |
+| `/api/learners/{id}/badges` | GET | Earned badges |
+| `/api/learners/{id}/streak` | GET | Streak details |
+| `/api/leaderboard` | GET | ?scope=global\|weekly\|monthly\|skill\|mastery |
+| `/api/challenges/current` | GET | Weekly challenges |
+| `/api/challenges/{id}/claim` | POST | Claim challenge reward |
+| `/api/learners/{id}/mission/complete` | POST | Complete daily mission |
 
-- Embeddings are TF-IDF by default (deterministic, offline); sentence-transformers gives
-  stronger semantics when installed.
-- Local mode composes coaching answers from retrieved knowledge rather than generating
-  free text; enabling an LLM key unlocks richer prose.
-- Courses/durations are curated estimates; external links are verified but third-party
-  content can change.
-- Analytics are real (computed from learner state); "demo data" is only what personas
-  pre-fill.
+---
 
-## 19. Future Improvements
+## Testing
 
-- PostgreSQL persistence + multi-tenant auth
-- Fine-grained progress tracking per resource (watch/read state via linkbacks)
-- Community-scale catalogue with ingestion pipeline and dedup
-- Calibrated user study for the evaluation benchmark (replace synthetic relevance)
-- Spaced-repetition scheduling inside the time planner
-- Graph-RAG over learner cohorts ("learners like you")
+```bash
+python -m pytest tests/ -v
+```
 
-## 20. Project Structure
+**112 tests** covering:
+- Profile extraction & validation
+- Recommendation ranking, explanations & diversity
+- Prerequisite ordering & deadline feasibility
+- Assessment grading (MCQ, multi-select, malformed input)
+- Adaptive remediation & acceleration
+- LLM/embedding fallback & coach honesty
+- XP calculation, difficulty multipliers, anti-farming
+- Badge conditions, streak math, leaderboards
+- Challenge completion & claim gating
+- Full end-to-end FastAPI flow (persona → roadmap → skills → recs → coach → assessment → adapt → career)
 
-See the Architecture section above; the composition root is `app/services/engine.py`,
-the catalogue lives in `app/data/`, and the single FastAPI process in `app/server.py`
-exposes a thin JSON API over the services while `frontend/` renders every page.
+---
 
-**API surface** — `POST /api/auth/signup` · `POST /api/auth/signin` · `POST /api/auth/guest` (demo mode) ·
-`GET /api/auth/me` · `POST /api/auth/signout` · `POST /api/profile/analyze` (NL extraction) ·
-`POST /api/learners` (persona or conversation) · `GET/PUT/DELETE /api/learners/{id}` ·
-`POST/GET /api/learners/{id}/roadmap` · `POST /api/learners/{id}/recommendations` ·
-`GET /api/learners/{id}/skills` · `GET /api/assessments/{id}` +
-`POST .../submit` · `POST /api/learners/{id}/coach` · `GET .../mission` ·
-`GET .../career` · `POST .../whatif` · `POST .../feedback` · `GET .../insights` ·
-`GET .../gamification` · `GET .../xp-history` · `GET .../badges` · `GET .../streak` ·
-`GET /api/leaderboard?scope=…` · `GET /api/challenges/current` ·
-`POST /api/challenges/{id}/claim` · `POST .../mission/complete` ·
-`PUT .../settings/leaderboard-opt-out` (toggle leaderboard visibility).
+## Recommendation Scoring
 
-## 21. Team
+```
+Score = Σ wᵢ · factorᵢ
+```
 
-Built for the **HCLAmplified Round 2** challenge: *AI-Powered Personalized Learning Path
-Recommender*.
+| Factor | Weight | What It Measures |
+|---|---|---|
+| Semantic Relevance | 0.30 | TF-IDF cosine similarity to goal + role |
+| Skill-Gap Coverage | 0.20 | How many missing/weak skills it addresses |
+| Goal Alignment | 0.15 | Contribution to role competency map |
+| Prerequisite Fit | 0.10 | Learner readiness for this item |
+| Difficulty Fit | 0.10 | Distance from learner's estimated level |
+| Preference Fit | 0.05 | Content format vs learning preference |
+| Time Fit | 0.05 | Duration vs weekly time budget |
+| Feedback Signal | 0.05 | Historical likes/skips/completions |
+
+MMR diversification (λ=0.7) ensures the top-K mixes courses, projects, resources, and assessments.
+
+---
+
+## Adaptive Engine
+
+```mermaid
+flowchart TD
+    A[Assessment taken] --> B{Score}
+    B -- "< 60% Weak" --> C[Weak concepts detected]
+    C --> D[Remediation phase inserted]
+    D --> D1[Micro-lesson] --> D2[Practice resource] --> D3[Re-assessment]
+    D3 --> A
+    B -- "60-84% Pass" --> E[Continue roadmap]
+    B -- ">= 85% Strong" --> F[Redundancy removed · Accelerate]
+    E --> G[Feedback updates preference weights]
+    F --> G
+    G --> H[Future recommendations adapt]
+```
+
+---
+
+## Gamification Pipeline
+
+```mermaid
+flowchart LR
+    E[Learning Event] --> XP[XP Engine<br/>base + bonus + multiplier]
+    XP --> D{Duplicate?}
+    D -- "Yes" --> Z[0 XP]
+    D -- "No" --> L[XP Ledger<br/>immutable transaction]
+    L --> LV[Level Calculator]
+    LV --> B[Badge Engine<br/>18 deterministic badges]
+    B --> LB[Leaderboard Update]
+    LB --> C[Weekly Challenge Progress]
+    C --> S[Streak Tracking]
+```
+
+---
+
+## License
+
+MIT
+
+---
+
+Built for **HCLAmplified Round 2**: *AI-Powered Personalized Learning Path Recommender*.
