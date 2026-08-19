@@ -458,50 +458,142 @@ h3 { font-size: 1.16rem; font-weight: 600; margin-bottom: 10px; }
   100% { opacity: 0; transform: translateY(-70px) scale(1); }
 }
 
-/* level-up overlay */
-.levelup-overlay {
-  position: fixed; inset: 0; z-index: 500;
+/* ========================= CINEMATIC CELEBRATION OVERLAY ========================= */
+.cinematic-overlay {
+  position: fixed; inset: 0; z-index: 600;
   display: flex; align-items: center; justify-content: center;
-  background: rgba(5, 6, 12, 0.72);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
-  animation: fade-in 0.3s ease both;
+  background: rgba(5, 6, 12, 0.82);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(140%);
+  animation: cel-overlay-in 0.35s ease both;
+  cursor: pointer;
 }
-.levelup-card {
-  text-align: center; padding: 40px 48px; border-radius: 22px;
-  background: linear-gradient(180deg, rgba(124, 108, 255, 0.2), rgba(5, 6, 12, 0.92));
-  border: 1px solid rgba(124, 108, 255, 0.5);
-  box-shadow: 0 40px 90px -20px rgba(124, 108, 255, 0.6), 0 0 80px -20px rgba(34, 211, 238, 0.4);
-  animation: levelup-pop 0.5s var(--ease-spring) both;
-  max-width: 90vw;
+.cinematic-overlay.celebrate-out {
+  animation: cel-overlay-out 0.45s ease both;
 }
-@keyframes levelup-pop {
-  0% { opacity: 0; transform: scale(0.7); }
-  100% { opacity: 1; transform: scale(1); }
+@keyframes cel-overlay-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
 }
-.levelup-card .lu-emoji { font-size: 52px; }
-.levelup-card .lu-kicker { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.2em; color: var(--brand-2); margin-top: 8px; }
-.levelup-card .lu-title { font-family: var(--font-display); font-weight: 800; font-size: 30px; margin-top: 6px; }
-.levelup-card .lu-sub { color: var(--ink-dim); font-size: 13.5px; margin-top: 8px; }
-.levelup-card .lu-badge { margin-top: 16px; font-size: 14px; }
+@keyframes cel-overlay-out {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
 
-/* badge unlock toast-style */
-.badge-toast {
-  position: fixed; top: 78px; left: 50%; transform: translateX(-50%);
-  z-index: 400; display: flex; gap: 12px; align-items: center;
-  padding: 14px 20px; border-radius: 14px;
-  background: linear-gradient(180deg, rgba(124, 108, 255, 0.25), rgba(10, 12, 22, 0.95));
-  border: 1px solid rgba(124, 108, 255, 0.55);
-  box-shadow: 0 24px 60px -16px rgba(124, 108, 255, 0.7);
-  animation: badge-toast-in 0.5s var(--ease-spring) both;
+/* particle canvas fills the viewport */
+.celebrate-particles {
+  position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;
 }
-@keyframes badge-toast-in {
-  0% { opacity: 0; transform: translateX(-50%) translateY(-16px) scale(0.9); }
-  100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+
+/* expanding ring container */
+.celebrate-rings {
+  position: absolute; inset: 0; pointer-events: none; overflow: hidden;
 }
-.badge-toast .bt-icon { font-size: 28px; }
-.badge-toast .bt-name { font-family: var(--font-display); font-weight: 700; font-size: 14.5px; }
-.badge-toast .bt-desc { font-size: 11.5px; color: var(--ink-dim); }
+.celebrate-ring {
+  position: absolute; top: 50%; left: 50%; width: 10px; height: 10px;
+  margin: -5px 0 0 -5px; border-radius: 50%;
+  border: 2px solid rgba(124, 108, 255, 0.5);
+  animation: cel-ring 1.6s ease-out both;
+  pointer-events: none;
+}
+@keyframes cel-ring {
+  0%   { transform: scale(0); opacity: 0.9; }
+  100% { transform: scale(80); opacity: 0; }
+}
+
+/* glint / flash sweep across card */
+.celebrate-glint {
+  position: absolute; inset: 0; pointer-events: none; overflow: hidden; border-radius: inherit;
+}
+.celebrate-glint::before {
+  content: ""; position: absolute;
+  top: -50%; left: -60%; width: 40%; height: 200%;
+  background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.25) 50%, transparent 60%);
+  animation: cel-glint 0.9s ease-in-out both;
+}
+@keyframes cel-glint {
+  0%   { transform: translateX(0) skewX(-15deg); }
+  100% { transform: translateX(500%) skewX(-15deg); }
+}
+
+/* celebration card */
+.celebrate-card {
+  position: relative; z-index: 2;
+  text-align: center; padding: 44px 52px 36px; border-radius: 24px;
+  background: linear-gradient(170deg, rgba(124, 108, 255, 0.22) 0%, rgba(5, 6, 12, 0.94) 70%);
+  border: 1px solid rgba(124, 108, 255, 0.45);
+  box-shadow:
+    0 0 0 1px rgba(124, 108, 255, 0.15),
+    0 40px 100px -20px rgba(124, 108, 255, 0.55),
+    0 0 120px -30px rgba(34, 211, 238, 0.35),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+  animation: cel-card-pop 0.55s var(--ease-spring) both;
+  max-width: 90vw; min-width: 320px;
+}
+@keyframes cel-card-pop {
+  0%   { opacity: 0; transform: scale(0.6) translateY(30px); }
+  60%  { transform: scale(1.04) translateY(-4px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+.cinematic-overlay.celebrate-out .celebrate-card {
+  animation: cel-card-out 0.4s ease both;
+}
+@keyframes cel-card-out {
+  0%   { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.85) translateY(20px); }
+}
+
+.celebrate-card .ce-emoji {
+  font-size: 64px; line-height: 1;
+  animation: cel-emoji-pop 0.6s var(--ease-spring) 0.15s both;
+  filter: drop-shadow(0 8px 24px rgba(124, 108, 255, 0.5));
+}
+@keyframes cel-emoji-pop {
+  0%   { transform: scale(0) rotate(-20deg); }
+  60%  { transform: scale(1.15) rotate(5deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+.celebrate-card .ce-kicker {
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.25em;
+  color: var(--brand-2); margin-top: 10px;
+  animation: cel-text-in 0.4s ease 0.25s both;
+}
+.celebrate-card .ce-title {
+  font-family: var(--font-display); font-weight: 800;
+  font-size: clamp(24px, 4vw, 34px); margin-top: 6px;
+  background: linear-gradient(135deg, #eef0ff 30%, var(--brand-2) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: cel-text-in 0.4s ease 0.3s both;
+}
+.celebrate-card .ce-sub {
+  color: var(--ink-dim); font-size: 13.5px; margin-top: 8px;
+  animation: cel-text-in 0.4s ease 0.35s both;
+}
+.celebrate-card .ce-badge {
+  margin-top: 14px;
+  animation: cel-text-in 0.4s ease 0.4s both;
+}
+.celebrate-card .ce-badge-xp {
+  display: inline-block; padding: 4px 16px; border-radius: 999px;
+  font-family: var(--font-mono); font-size: 13px; font-weight: 700;
+  background: rgba(52, 211, 153, 0.14); color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  box-shadow: 0 0 20px -4px rgba(52, 211, 153, 0.4);
+}
+.celebrate-card .btn {
+  margin-top: 20px;
+  animation: cel-text-in 0.4s ease 0.5s both;
+}
+@keyframes cel-text-in {
+  0%   { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* legacy names kept for any stray refs */
+.levelup-overlay { }
+.levelup-card { }
+.badge-toast { }
 
 /* ------------------------------ badges / chips ------------------------------ */
 .badge {

@@ -76,6 +76,139 @@ const UI = (() => {
   }
 
   /* ------------------------- gamification FX ------------------------- */
+
+  /* --- particle canvas helper for overlays --- */
+  function _spawnParticles(canvas, colors, count) {
+    const ctx = canvas.getContext("2d");
+    const W = canvas.width = innerWidth;
+    const H = canvas.height = innerHeight;
+    const cx = W / 2, cy = H / 2;
+    const particles = [];
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 2 + Math.random() * 8;
+      const size = 3 + Math.random() * 6;
+      particles.push({
+        x: cx, y: cy,
+        vx: Math.cos(angle) * speed * (0.5 + Math.random()),
+        vy: Math.sin(angle) * speed * (0.5 + Math.random()) - 2,
+        size,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        life: 1,
+        decay: 0.008 + Math.random() * 0.012,
+        rot: Math.random() * Math.PI * 2,
+        rotSpeed: (Math.random() - 0.5) * 0.15,
+        shape: Math.random() < 0.4 ? "rect" : Math.random() < 0.6 ? "circle" : "star",
+        gravity: 0.06 + Math.random() * 0.04,
+      });
+    }
+    let raf;
+    function tick() {
+      ctx.clearRect(0, 0, W, H);
+      let alive = false;
+      for (const p of particles) {
+        if (p.life <= 0) continue;
+        alive = true;
+        p.x += p.vx; p.y += p.vy;
+        p.vy += p.gravity;
+        p.vx *= 0.99;
+        p.rot += p.rotSpeed;
+        p.life -= p.decay;
+        const a = Math.max(0, p.life);
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.globalAlpha = a;
+        ctx.fillStyle = p.color;
+        if (p.shape === "rect") {
+          ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+        } else if (p.shape === "star") {
+          ctx.beginPath();
+          for (let j = 0; j < 5; j++) {
+            const r1 = p.size, r2 = p.size * 0.4;
+            const a1 = (j * 72 - 90) * Math.PI / 180;
+            const a2 = ((j * 72 + 36) - 90) * Math.PI / 180;
+            ctx.lineTo(Math.cos(a1) * r1, Math.sin(a1) * r1);
+            ctx.lineTo(Math.cos(a2) * r2, Math.sin(a2) * r2);
+          }
+          ctx.closePath();
+          ctx.fill();
+        } else {
+          ctx.beginPath();
+          ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+      if (alive) raf = requestAnimationFrame(tick);
+    }
+    tick();
+    return () => cancelAnimationFrame(raf);
+  }
+
+  /* --- ring burst (concentric expanding rings) --- */
+  function _ringBurst(container) {
+    const colors = ["rgba(124,108,255,0.5)", "rgba(34,211,238,0.4)", "rgba(217,70,239,0.35)", "rgba(52,211,153,0.3)"];
+    for (let i = 0; i < 4; i++) {
+      const ring = document.createElement("div");
+      ring.className = "celebrate-ring";
+      ring.style.cssText = `animation-delay: ${i * 0.12}s; border-color: ${colors[i]};`;
+      container.appendChild(ring);
+      setTimeout(() => ring.remove(), 2200);
+    }
+  }
+
+  /* --- glint flash across the card --- */
+  function _glintFlash(card) {
+    const glint = document.createElement("div");
+    glint.className = "celebrate-glint";
+    card.style.position = "relative";
+    card.style.overflow = "hidden";
+    card.appendChild(glint);
+    setTimeout(() => glint.remove(), 1200);
+  }
+
+  /* --- shared overlay builder --- */
+  function _cinematicOverlay({ emoji, kicker, title, sub, badge, colors, onClose }) {
+    // close any existing overlays first
+    document.querySelectorAll(".cinematic-overlay").forEach((e) => e.remove());
+
+    const overlay = document.createElement("div");
+    overlay.className = "cinematic-overlay";
+    overlay.innerHTML = `<canvas class="celebrate-particles"></canvas>
+      <div class="celebrate-rings"></div>
+      <div class="celebrate-card">
+        <div class="ce-emoji">${emoji}</div>
+        <div class="ce-kicker">${kicker}</div>
+        <div class="ce-title">${title}</div>
+        ${sub ? `<div class="ce-sub">${sub}</div>` : ""}
+        ${badge ? `<div class="ce-badge">${badge}</div>` : ""}
+        <button class="btn btn-primary" data-ce-close>Continue →</button>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    const card = overlay.querySelector(".celebrate-card");
+    const ringsEl = overlay.querySelector(".celebrate-rings");
+    const canvas = overlay.querySelector(".celebrate-particles");
+
+    // animations
+    requestAnimationFrame(() => {
+      _spawnParticles(canvas, colors, 80);
+      _ringBurst(ringsEl);
+      setTimeout(() => _glintFlash(card), 350);
+    });
+
+    // dismiss
+    const dismiss = () => {
+      overlay.classList.add("celebrate-out");
+      setTimeout(() => overlay.remove(), 500);
+    };
+    overlay.querySelector("[data-ce-close]").addEventListener("click", dismiss);
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) dismiss(); });
+    // auto-dismiss after 6s
+    setTimeout(dismiss, 6000);
+  }
+
   function xpFloat(xp, anchor) {
     if (!xp || xp <= 0) return;
     const el = document.createElement("div");
@@ -89,36 +222,40 @@ const UI = (() => {
   }
 
   function badgeToast(badge) {
-    const el = document.createElement("div");
-    el.className = "badge-toast";
-    el.innerHTML = `<div class="bt-icon">${badge.icon}</div>
-      <div><div class="bt-name">🏆 BADGE UNLOCKED — ${esc(badge.name)}</div>
-      <div class="bt-desc">${esc(badge.description)}</div></div>`;
-    document.body.appendChild(el);
-    setTimeout(() => { el.style.transition = "opacity .4s, transform .4s"; el.style.opacity = "0"; el.style.transform = "translateX(-50%) translateY(-14px)"; }, 2600);
-    setTimeout(() => el.remove(), 3100);
+    const colors = ["#7c6cff", "#22d3ee", "#d946ef", "#34d399", "#fbbf24"];
+    _cinematicOverlay({
+      emoji: badge.icon || "🏆",
+      kicker: "BADGE UNLOCKED",
+      title: esc(badge.name),
+      sub: esc(badge.description),
+      badge: `<span class="ce-badge-xp">+${badge.xp_reward || 0} XP</span>`,
+      colors,
+    });
   }
 
   function levelUp(lu) {
-    const el = document.createElement("div");
-    el.className = "levelup-overlay";
-    el.innerHTML = `<div class="levelup-card">
-      <div class="lu-emoji">🎉</div>
-      <div class="lu-kicker">LEVEL UP</div>
-      <div class="lu-title">${esc(lu.title)} — Level ${lu.to}</div>
-      <div class="lu-sub">You earned +${lu.xp_earned} XP on this activity.</div>
-      <button class="btn btn-primary" data-lu-close>Continue learning →</button>
-    </div>`;
-    document.body.appendChild(el);
-    el.querySelector("[data-lu-close]").addEventListener("click", () => el.remove());
-    el.addEventListener("click", (e) => { if (e.target === el) el.remove(); });
+    const colors = ["#7c6cff", "#22d3ee", "#d946ef", "#fbbf24", "#34d399"];
+    _cinematicOverlay({
+      emoji: "🎉",
+      kicker: "LEVEL UP",
+      title: `${esc(lu.title)} — Level ${lu.to}`,
+      sub: `You earned +${lu.xp_earned} XP on this activity.`,
+      colors,
+    });
   }
 
   function xpFX(xpResult, anchor) {
     if (!xpResult) return;
     xpFloat(xpResult.xp_awarded, anchor);
-    (xpResult.new_badges || []).forEach(badgeToast);
-    if (xpResult.level_up) levelUp(xpResult.level_up);
+    // level-up takes priority (shows first); badges queue after
+    const badges = xpResult.new_badges || [];
+    if (xpResult.level_up) {
+      levelUp(xpResult.level_up);
+      // queue badges to show after overlay closes
+      badges.forEach((b, i) => setTimeout(() => badgeToast(b), 6500 * (i + 1)));
+    } else {
+      badges.forEach((b, i) => setTimeout(() => badgeToast(b), i * 100));
+    }
   }
 
   /* ------------------------------ loading ------------------------------ */
