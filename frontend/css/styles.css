@@ -180,7 +180,7 @@ img, canvas, svg { display: block; max-width: 100%; }
 
 .page-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(5, 1fr);
   gap: 14px;
   padding: 0 0 28px;
 }
@@ -194,29 +194,51 @@ img, canvas, svg { display: block; max-width: 100%; }
   -webkit-backdrop-filter: blur(16px) saturate(170%);
   backdrop-filter: blur(16px) saturate(170%);
   cursor: pointer;
-  transition: all 0.25s var(--ease-out);
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+              border-color 0.3s var(--ease-out),
+              box-shadow 0.35s var(--ease-out);
   position: relative; overflow: hidden;
 }
+/* Cursor-proximity radial glow */
 .page-card::before {
   content: ""; position: absolute; inset: 0;
-  background: linear-gradient(135deg, rgba(124, 108, 255, 0.08), rgba(34, 211, 238, 0.04));
+  background: radial-gradient(circle 180px at var(--glow-x, 50%) var(--glow-y, 50%),
+    rgba(124, 108, 255, calc(0.18 * var(--glow, 0))),
+    rgba(34, 211, 238, calc(0.08 * var(--glow, 0))),
+    transparent 70%);
+  opacity: 1; pointer-events: none;
+  border-radius: inherit; z-index: 0;
+}
+.page-card::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(124, 108, 255, 0.1), rgba(34, 211, 238, 0.04));
   opacity: 0; transition: opacity 0.3s var(--ease-out);
   border-radius: inherit;
 }
 .page-card:hover {
-  border-color: rgba(124, 108, 255, 0.35);
-  transform: translateY(-3px);
-  box-shadow: 0 12px 36px -8px rgba(124, 108, 255, 0.3), 0 0 0 1px rgba(124, 108, 255, 0.15);
+  border-color: rgba(124, 108, 255, 0.4);
+  transform: translateY(-5px) scale(1.02);
+  box-shadow: 0 16px 48px -8px rgba(124, 108, 255, 0.35),
+              0 0 0 1px rgba(124, 108, 255, 0.2),
+              0 0 60px -20px rgba(124, 108, 255, 0.25);
 }
-.page-card:hover::before { opacity: 1; }
-.page-card:active { transform: translateY(0) scale(0.98); }
+.page-card:hover::after { opacity: 1; }
+.page-card:active {
+  transform: translateY(-1px) scale(0.97);
+  transition-duration: 0.08s;
+}
 .page-card.active-card {
   border-color: rgba(124, 108, 255, 0.5);
   background: rgba(124, 108, 255, 0.08);
-  box-shadow: 0 0 24px -6px rgba(124, 108, 255, 0.4);
+  box-shadow: 0 0 30px -6px rgba(124, 108, 255, 0.45),
+              inset 0 0 30px -10px rgba(124, 108, 255, 0.3);
 }
 .page-card-icon {
   font-size: 28px; line-height: 1; position: relative; z-index: 1;
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.page-card:hover .page-card-icon {
+  transform: scale(1.2) translateY(-2px);
 }
 .page-card-label {
   font-family: var(--font-display); font-weight: 600; font-size: 15px;
@@ -225,7 +247,9 @@ img, canvas, svg { display: block; max-width: 100%; }
 .page-card-desc {
   font-size: 12px; color: var(--ink-faint); line-height: 1.45;
   position: relative; z-index: 1;
+  transition: color 0.3s var(--ease-out);
 }
+.page-card:hover .page-card-desc { color: var(--ink-dim); }
 
 /* Back-to-grid button */
 .back-to-grid {
@@ -948,7 +972,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
 
 @media (max-width: 880px) {
   .main { padding: 0 16px 48px; }
-  .page-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+  .page-grid { grid-template-columns: repeat(3, 1fr); gap: 12px; }
 }
 
 @media (max-width: 640px) {
@@ -958,7 +982,8 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
   .learner-chip .lc-label { display: none; }
   .ghost-btn { padding: 7px 9px; }
   .main { padding: 0 14px 40px; }
-  .page-grid { grid-template-columns: 1fr; gap: 10px; }
+  .page-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+}
 
   /* stack the onboarding "understanding" rows */
   .understanding .u-row { flex-direction: column; gap: 2px; padding: 8px 0; }
@@ -1006,6 +1031,100 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
   box-shadow: 0 0 0 3px rgba(124, 108, 255, 0.4);
 }
 
+/* ========================== ELITE ANIMATIONS ========================== */
+
+/* Button ripple effect */
+.btn-ripple {
+  position: absolute; width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(124, 108, 255, 0.45);
+  transform: translate(-50%, -50%) scale(0);
+  animation: ripple-burst 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  pointer-events: none; z-index: 10;
+}
+@keyframes ripple-burst {
+  0% { transform: translate(-50%, -50%) scale(0); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(30); opacity: 0; }
+}
+
+/* Staggered reveal for grid children */
+[data-stagger] > * {
+  opacity: 0; transform: translateY(24px) scale(0.96);
+  transition: opacity 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+              transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+[data-stagger] > *.stagger-in {
+  opacity: 1; transform: translateY(0) scale(1);
+}
+
+/* Standard reveal */
+.reveal {
+  opacity: 0; transform: translateY(22px);
+  transition: opacity 0.6s var(--ease-out), transform 0.6s var(--ease-out);
+}
+.reveal.in { opacity: 1; transform: none; }
+
+/* Text stagger — word-by-word mask reveal */
+.stagger-text-active {
+  overflow: hidden;
+}
+.stagger-word {
+  display: inline-block;
+  opacity: 0; transform: translateY(100%);
+  transition: opacity 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
+              transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition-delay: calc(var(--tw, 0) * 60ms + 100ms);
+}
+.stagger-text-active .stagger-word {
+  opacity: 1; transform: translateY(0);
+}
+
+/* Enhanced curtain — dual-phase sweep */
+#curtain.on {
+  animation: curtain-in 0.38s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+#curtain.on.phase-out {
+  animation: curtain-out 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+@keyframes curtain-in {
+  from { opacity: 0; backdrop-filter: blur(0px); }
+  to   { opacity: 1; backdrop-filter: blur(18px); }
+}
+@keyframes curtain-out {
+  from { opacity: 1; backdrop-filter: blur(18px); }
+  to   { opacity: 0; backdrop-filter: blur(0px); }
+}
+
+/* Spring-based transitions for interactive elements */
+.btn, button, [data-action] {
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+              background 0.25s var(--ease-out),
+              border-color 0.25s var(--ease-out),
+              box-shadow 0.3s var(--ease-out),
+              color 0.2s var(--ease-out);
+}
+
+/* Glass panel cursor glow border */
+.glass, .rec-card {
+  position: relative;
+  transition: border-color 0.3s var(--ease-out), box-shadow 0.35s var(--ease-out);
+}
+.glass::before, .rec-card::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  background: radial-gradient(circle 200px at var(--glow-x, 50%) var(--glow-y, 50%),
+    rgba(124, 108, 255, calc(0.12 * var(--glow, 0))),
+    transparent 70%);
+  pointer-events: none; opacity: 0; transition: opacity 0.3s;
+}
+.glass:hover::before, .rec-card:hover::before { opacity: 1; }
+
+/* Hero text parallax container */
+[data-parallax] {
+  will-change: transform, opacity;
+}
+[data-parallax-card] {
+  will-change: transform;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -1013,4 +1132,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
     transition-duration: 0.01ms !important;
   }
   html { scroll-behavior: auto; }
+  .reveal { opacity: 1; transform: none; }
+  [data-stagger] > * { opacity: 1; transform: none; }
+  .stagger-word { opacity: 1; transform: none; }
 }

@@ -1,10 +1,46 @@
-/* LearnPath AI — cinematic motion engine
-   Universe canvas · custom cursor · magnetic buttons · tilt cards · curtains */
+/* LearnPath AI — Cinematic Motion Engine v2
+   Spring physics · magnetic hover · staggered reveals · cursor glow · parallax */
 "use strict";
 
 const Motion = (() => {
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+
+  /* ================================================================
+     SPRING PHYSICS ENGINE
+     ================================================================ */
+  class Spring {
+    constructor({ stiffness = 400, damping = 30, mass = 0.8 } = {}) {
+      this.stiffness = stiffness;
+      this.damping = damping;
+      this.mass = mass;
+      this.value = 0;
+      this.target = 0;
+      this.velocity = 0;
+      this.settled = true;
+    }
+    setTarget(t) { this.target = t; this.settled = false; }
+    step(dt) {
+      if (this.settled) return this.value;
+      const displacement = this.value - this.target;
+      const springForce = -this.stiffness * displacement;
+      const dampingForce = -this.damping * this.velocity;
+      const acceleration = (springForce + dampingForce) / this.mass;
+      this.velocity += acceleration * dt;
+      this.value += this.velocity * dt;
+      if (Math.abs(this.velocity) < 0.01 && Math.abs(displacement) < 0.01) {
+        this.value = this.target;
+        this.velocity = 0;
+        this.settled = true;
+      }
+      return this.value;
+    }
+  }
+
+  /* Global spring config for page transitions */
+  const SPRING_CONFIG = { stiffness: 400, damping: 30, mass: 0.8 };
+  const SPRING_SOFT = { stiffness: 200, damping: 22, mass: 1 };
+  const SPRING_SNAPPY = { stiffness: 600, damping: 35, mass: 0.6 };
 
   /* ================================================================
      UNIVERSE — live aurora nebula + starfield + shooting stars
@@ -22,14 +58,13 @@ const Motion = (() => {
       stars.push({
         x: Math.random(), y: Math.random(),
         r: Math.random() * 1.4 + 0.3,
-        layer: Math.random(),                       // 0 far … 1 near (parallax)
+        layer: Math.random(),
         tw: Math.random() * Math.PI * 2,
         ts: 0.4 + Math.random() * 1.6,
-        hue: Math.random() < 0.18 ? 1 : 0,          // occasional tinted star
+        hue: Math.random() < 0.18 ? 1 : 0,
       });
     }
 
-    // aurora blobs: center, radius, colors
     const blobs = [
       { x: 0.2, y: 0.18, r: 0.46, c: "124,108,255", a: 0.16, dx: 0.00035, dy: 0.00022 },
       { x: 0.8, y: 0.14, r: 0.4, c: "34,211,238", a: 0.13, dx: -0.00028, dy: 0.0003 },
@@ -82,7 +117,7 @@ const Motion = (() => {
           ? `rgba(190,227,255,${alpha.toFixed(3)})`
           : `rgba(230,236,255,${alpha.toFixed(3)})`;
         ctx.fill();
-        if (s.layer > 0.75 && twinkle > 0.94) {   // faint cross glow on bright stars
+        if (s.layer > 0.75 && twinkle > 0.94) {
           ctx.strokeStyle = `rgba(255,255,255,${(twinkle * 0.14).toFixed(3)})`;
           ctx.lineWidth = 1;
           ctx.beginPath();
@@ -133,59 +168,78 @@ const Motion = (() => {
   }
 
   /* ================================================================
-     CUSTOM CURSOR — morphing dot + trailing ring
+     CUSTOM CURSOR — morphing dot + trailing ring with spring physics
      ================================================================ */
   function startCursor() {
     if (!finePointer) return;
     const cursor = document.getElementById("cursor");
     const dot = cursor.querySelector(".cursor-dot");
     const ring = cursor.querySelector(".cursor-ring");
-    let mx = innerWidth / 2, my = innerHeight / 2, rx = mx, ry = my;
+    let mx = innerWidth / 2, my = innerHeight / 2;
     let visible = false;
+
+    /* Spring-animated ring position */
+    const ringX = new Spring({ stiffness: 180, damping: 22, mass: 1 });
+    const ringY = new Spring({ stiffness: 180, damping: 22, mass: 1 });
+    ringX.value = mx; ringX.target = mx;
+    ringY.value = my; ringY.target = my;
 
     window.addEventListener("pointermove", (e) => {
       mx = e.clientX; my = e.clientY;
+      ringX.setTarget(mx); ringY.setTarget(my);
       if (!visible) { visible = true; cursor.style.opacity = 1; }
       dot.style.left = mx + "px"; dot.style.top = my + "px";
-      const t = e.target.closest ? e.target.closest("button, a, [data-action], input, textarea, select, .persona, .card[data-tilt]") : null;
+      const t = e.target.closest ? e.target.closest("button, a, [data-action], input, textarea, select, .persona, .card[data-tilt], .page-card") : null;
       cursor.classList.toggle("hovering", !!t);
     }, { passive: true });
     window.addEventListener("pointerdown", () => cursor.classList.add("pressed"));
     window.addEventListener("pointerup", () => cursor.classList.remove("pressed"));
     document.addEventListener("mouseleave", () => { visible = false; cursor.style.opacity = 0; });
 
-    (function ringLoop() {
-      rx += (mx - rx) * 0.16; ry += (my - ry) * 0.16;
-      ring.style.left = rx + "px"; ring.style.top = ry + "px";
+    let lastTime = performance.now();
+    (function ringLoop(now) {
+      const dt = Math.min((now - lastTime) / 1000, 0.05);
+      lastTime = now;
+      ringX.step(dt); ringY.step(dt);
+      ring.style.left = ringX.value + "px";
+      ring.style.top = ringY.value + "px";
       if (!reduceMotion) requestAnimationFrame(ringLoop);
-    })();
+    })(performance.now());
   }
 
   /* ================================================================
-     MAGNETIC BUTTONS + TILT CARDS
+     MAGNETIC BUTTONS + TILT CARDS + CURSOR-PROXIMITY GLOW
      ================================================================ */
   function startMicroInteractions() {
     if (reduceMotion) return;
+
+    /* Magnetic pull on buttons */
     document.addEventListener("pointermove", (e) => {
-      // magnetic
       const mag = e.target.closest("[data-magnetic]");
       if (mag) {
         const r = mag.getBoundingClientRect();
-        const dx = e.clientX - (r.left + r.width / 2);
-        const dy = e.clientY - (r.top + r.height / 2);
-        mag.style.transform = `translate(${dx * 0.18}px, ${dy * 0.22}px)`;
+        const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+        const dx = e.clientX - cx, dy = e.clientY - cy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const strength = Math.min(dist / 80, 1);
+        mag.style.transform = `translate(${(dx * 0.2 * strength).toFixed(1)}px, ${(dy * 0.24 * strength).toFixed(1)}px) scale(${1 + strength * 0.02})`;
+        mag.style.setProperty("--mx", ((e.clientX - r.left) / r.width * 100).toFixed(1) + "%");
+        mag.style.setProperty("--my", ((e.clientY - r.top) / r.height * 100).toFixed(1) + "%");
       }
-      // tilt cards
+    });
+
+    /* Tilt cards with perspective */
+    document.addEventListener("pointermove", (e) => {
       const tilt = e.target.closest("[data-tilt]");
       document.querySelectorAll("[data-tilt]").forEach((el) => {
         if (el === tilt) {
           const r = el.getBoundingClientRect();
           const px = (e.clientX - r.left) / r.width - 0.5;
           const py = (e.clientY - r.top) / r.height - 0.5;
-          el.style.transform = `perspective(900px) rotateX(${(-py * 6).toFixed(2)}deg) rotateY(${(px * 8).toFixed(2)}deg) translateY(-3px)`;
+          el.style.transform = `perspective(900px) rotateX(${(-py * 8).toFixed(2)}deg) rotateY(${(px * 10).toFixed(2)}deg) translateY(-4px) scale(1.01)`;
           el.style.setProperty("--gx", ((px + 0.5) * 100).toFixed(1) + "%");
           el.style.setProperty("--gy", ((py + 0.5) * 100).toFixed(1) + "%");
-        } else {
+        } else if (!el.classList.contains("page-card")) {
           el.style.transform = "";
         }
       });
@@ -193,30 +247,96 @@ const Motion = (() => {
     document.addEventListener("mouseleave", () => {
       document.querySelectorAll("[data-tilt]").forEach((el) => (el.style.transform = ""));
     });
-  }
 
-  /* ================================================================
-     SCENE CURTAIN — cinematic page transitions
-     ================================================================ */
-  const curtainEl = document.getElementById("curtain");
-  function playCurtain() {
-    if (reduceMotion || !curtainEl) return Promise.resolve();
-    return new Promise((resolve) => {
-      curtainEl.classList.remove("on");
-      void curtainEl.offsetWidth;               // restart animation
-      curtainEl.classList.add("on");
-      setTimeout(resolve, 500);
+    /* Cursor-proximity glow on glass panels */
+    document.addEventListener("pointermove", (e) => {
+      document.querySelectorAll(".page-card, .glass, .rec-card").forEach((el) => {
+        const r = el.getBoundingClientRect();
+        const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+        const dx = e.clientX - cx, dy = e.clientY - cy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const glow = Math.max(0, 1 - dist / 300);
+        el.style.setProperty("--glow", glow.toFixed(3));
+        if (glow > 0.05) {
+          const nx = ((e.clientX - r.left) / r.width * 100).toFixed(1);
+          const ny = ((e.clientY - r.top) / r.height * 100).toFixed(1);
+          el.style.setProperty("--glow-x", nx + "%");
+          el.style.setProperty("--glow-y", ny + "%");
+        }
+      });
+    });
+
+    /* Button press spring compression */
+    document.addEventListener("pointerdown", (e) => {
+      const btn = e.target.closest("button, [data-action]");
+      if (btn) {
+        btn.style.transition = "transform 0.08s cubic-bezier(0.34, 1.56, 0.64, 1)";
+        btn.style.transform = "scale(0.95)";
+        /* Fire ripple */
+        const ripple = document.createElement("span");
+        ripple.className = "btn-ripple";
+        const r = btn.getBoundingClientRect();
+        ripple.style.left = (e.clientX - r.left) + "px";
+        ripple.style.top = (e.clientY - r.top) + "px";
+        btn.style.position = btn.style.position || "relative";
+        btn.style.overflow = "hidden";
+        btn.appendChild(ripple);
+        setTimeout(() => ripple.remove(), 600);
+      }
+    });
+    document.addEventListener("pointerup", () => {
+      document.querySelectorAll("button, [data-action]").forEach((btn) => {
+        btn.style.transition = "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)";
+        btn.style.transform = "";
+      });
+    });
+
+    /* Reset magnetic on leave */
+    document.addEventListener("pointerup", () => {
+      document.querySelectorAll("[data-magnetic]").forEach((el) => {
+        el.style.transition = "transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)";
+        el.style.transform = "";
+        setTimeout(() => { el.style.transition = ""; }, 500);
+      });
     });
   }
 
   /* ================================================================
-     REVEAL-ON-SCROLL
+     SCENE CURTAIN — cinematic page transitions (dual-layer)
+     ================================================================ */
+  const curtainEl = document.getElementById("curtain");
+  let curtainResolve = null;
+
+  function playCurtain() {
+    if (reduceMotion || !curtainEl) return Promise.resolve();
+    return new Promise((resolve) => {
+      curtainResolve = resolve;
+      curtainEl.classList.remove("on");
+      void curtainEl.offsetWidth;
+      curtainEl.classList.add("on");
+      /* Dual-phase: curtain sweeps in, then out */
+      setTimeout(() => {
+        curtainEl.classList.add("phase-out");
+        setTimeout(() => {
+          curtainEl.classList.remove("on", "phase-out");
+          curtainResolve = null;
+          resolve();
+        }, 420);
+      }, 380);
+    });
+  }
+
+  /* ================================================================
+     STAGGERED REVEALS — spring-physics scroll reveals
      ================================================================ */
   function observeReveals(root) {
     if (!("IntersectionObserver" in window)) {
       root.querySelectorAll(".reveal").forEach((el) => el.classList.add("in"));
+      root.querySelectorAll("[data-stagger]").forEach((el) => el.classList.add("in"));
       return;
     }
+
+    /* Standard reveals */
     const io = new IntersectionObserver((entries) => {
       entries.forEach((en) => {
         if (en.isIntersecting) {
@@ -225,10 +345,31 @@ const Motion = (() => {
         }
       });
     }, { threshold: 0.08, rootMargin: "0px 0px -40px 0px" });
+
     root.querySelectorAll(".reveal:not(.in)").forEach((el) => {
       const d = parseFloat(el.dataset.delay || 0);
       el.style.transitionDelay = d + "ms";
       io.observe(el);
+    });
+
+    /* Staggered children — each child animates in sequence */
+    const staggerGroups = root.querySelectorAll("[data-stagger]");
+    staggerGroups.forEach((group) => {
+      const delay = parseFloat(group.dataset.staggerDelay || 60);
+      const children = group.children;
+      const sio = new IntersectionObserver((entries) => {
+        entries.forEach((en) => {
+          if (en.isIntersecting) {
+            Array.from(children).forEach((child, i) => {
+              child.style.setProperty("--stagger", i);
+              child.style.transitionDelay = (i * delay) + "ms";
+              child.classList.add("stagger-in");
+            });
+            sio.unobserve(en.target);
+          }
+        });
+      }, { threshold: 0.05 });
+      sio.observe(group);
     });
   }
 
@@ -244,5 +385,82 @@ const Motion = (() => {
     });
   }
 
-  return { startUniverse, startCursor, startMicroInteractions, playCurtain, observeReveals, animateBars, reduceMotion };
+  /* ================================================================
+     PAGE GRID ENTRANCE — spring-physics staggered card reveal
+     ================================================================ */
+  function animatePageGrid(container) {
+    if (reduceMotion) return;
+    const cards = container.querySelectorAll(".page-card");
+    const header = container.querySelector(".page-grid-header");
+    if (header) {
+      header.style.opacity = "0";
+      header.style.transform = "translateY(20px)";
+      requestAnimationFrame(() => {
+        header.style.transition = "opacity 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)";
+        header.style.opacity = "1";
+        header.style.transform = "translateY(0)";
+      });
+    }
+    cards.forEach((card, i) => {
+      card.style.opacity = "0";
+      card.style.transform = "translateY(30px) scale(0.95)";
+      setTimeout(() => {
+        card.style.transition = "opacity 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)";
+        card.style.opacity = "1";
+        card.style.transform = "translateY(0) scale(1)";
+      }, 120 + i * 70);
+    });
+  }
+
+  /* ================================================================
+     SCROLL PARALLAX — tie elements to scroll progress
+     ================================================================ */
+  function startScrollParallax() {
+    if (reduceMotion) return;
+    let ticking = false;
+    window.addEventListener("scroll", () => {
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          const scrollY = window.scrollY;
+          /* Parallax hero text */
+          document.querySelectorAll("[data-parallax]").forEach((el) => {
+            const speed = parseFloat(el.dataset.parallax || 0.3);
+            const y = scrollY * speed;
+            el.style.transform = `translateY(${y.toFixed(1)}px) scale(${(1 - scrollY * 0.0002).toFixed(4)})`;
+            el.style.opacity = Math.max(0, 1 - scrollY * 0.002).toFixed(3);
+          });
+          /* Glass cards parallax at varying speeds */
+          document.querySelectorAll("[data-parallax-card]").forEach((el) => {
+            const speed = parseFloat(el.dataset.parallaxCard || 0.1);
+            const rect = el.getBoundingClientRect();
+            if (rect.top < window.innerHeight && rect.bottom > 0) {
+              el.style.transform = `translateY(${((window.innerHeight - rect.top) * speed * 0.05).toFixed(1)}px)`;
+            }
+          });
+          ticking = false;
+        });
+        ticking = true;
+      }
+    }, { passive: true });
+  }
+
+  /* ================================================================
+     TEXT STAGGER — word-by-word mask reveal
+     ================================================================ */
+  function staggerText(el) {
+    if (reduceMotion || !el) return;
+    const text = el.textContent;
+    const words = text.split(/\s+/);
+    el.innerHTML = words.map((w, i) =>
+      `<span class="stagger-word" style="--tw:${i}">${w}</span>`
+    ).join(" ");
+    el.classList.add("stagger-text-active");
+  }
+
+  return {
+    startUniverse, startCursor, startMicroInteractions,
+    playCurtain, observeReveals, animateBars,
+    animatePageGrid, startScrollParallax, staggerText,
+    reduceMotion, Spring, SPRING_CONFIG, SPRING_SOFT, SPRING_SNAPPY,
+  };
 })();

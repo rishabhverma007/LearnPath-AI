@@ -44,9 +44,9 @@ const App = (() => {
         <h2>Navigate your journey</h2>
         <p>Pick a section to explore — every page is one click away.</p>
       </div>
-      <div class="page-grid">
+      <div class="page-grid" data-stagger stagger-delay="70">
         ${GRID_PAGES.map(g => `
-          <button class="page-card${pageKey === g.key ? " active-card" : ""}" data-action="goto" data-page="${g.key}">
+          <button class="page-card${pageKey === g.key ? " active-card" : ""}" data-action="goto" data-page="${g.key}" data-magnetic data-tilt>
             <div class="page-card-icon">${g.icon}</div>
             <div class="page-card-label">${g.label}</div>
             <div class="page-card-desc">${g.desc}</div>
@@ -56,6 +56,7 @@ const App = (() => {
     `;
     viewRoot = view;
     Motion.observeReveals(viewRoot);
+    Motion.animatePageGrid(view);
   }
 
   function updatePageTitle() {
@@ -617,6 +618,7 @@ const App = (() => {
     Motion.startUniverse();
     Motion.startCursor();
     Motion.startMicroInteractions();
+    Motion.startScrollParallax();
     wireEvents();
     try {
       Store.meta = await bootMeta();
@@ -643,9 +645,8 @@ const App = (() => {
       }
     }
     await refreshLearner();
-    let start = "landing";
-    if (Store.authed) start = Store.learner ? (Store.roadmap ? "dashboard" : "journey") : "onboarding";
-    await navigate(start);
+    // Always start on the landing page — the page grid is accessed from there
+    await navigate("landing");
   }
 
   return { boot, navigate, actions, refreshLearner, renderLearnerChip };
