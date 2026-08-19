@@ -947,6 +947,45 @@ Pages.achievements = {
     const breakdown = g.breakdown || [];
     const bdHtml = breakdown.length ? breakdown.map((b) => UI.bar(b.activity_type.replace(/_/g, " "), Math.min(1, b.xp / Math.max(1, breakdown[0].xp)), { pct: b.xp })).join("") : "";
 
+    // fetch analytics
+    let analytics = null;
+    try {
+      analytics = await API.analytics(learner.learner_id);
+    } catch (_) { /* analytics optional */ }
+
+    // XP growth chart
+    const xpGrowthData = analytics && analytics.xp_growth ? analytics.xp_growth : [];
+    const xpGrowthHtml = xpGrowthData.length >= 2
+      ? `<div class="glass reveal" style="padding:22px">
+          <div class="card-title">XP Growth</div>
+          <div class="card-sub">Cumulative XP earned over time</div>
+          <div style="height:12px"></div>
+          ${UI.lineSVG(xpGrowthData)}
+        </div>`
+      : `""`;
+
+    // weekly activity chart
+    const weeklyData = analytics && analytics.weekly_activity ? analytics.weekly_activity : [];
+    const weeklyHtml = weeklyData.some((d) => d.xp > 0)
+      ? `<div class="glass reveal" data-delay="60" style="padding:22px">
+          <div class="card-title">Weekly Activity</div>
+          <div class="card-sub">XP earned by day of week</div>
+          <div style="height:12px"></div>
+          ${UI.vBarSVG(weeklyData.map((d) => ({ label: d.day, xp: d.xp, color: d.xp > 0 ? "#7c6cff" : "rgba(148,163,184,0.3)" })))}
+        </div>`
+      : `""`;
+
+    // skill mastery chart
+    const skillData = analytics && analytics.skill_breakdown ? analytics.skill_breakdown.slice(0, 8) : [];
+    const skillHtml = skillData.length
+      ? `<div class="glass reveal" style="padding:22px">
+          <div class="card-title">XP by Skill Area</div>
+          <div class="card-sub">Top activity types contributing to your XP</div>
+          <div style="height:12px"></div>
+          ${UI.vBarSVG(skillData.map((d, i) => ({ label: d.activity_type.slice(0, 12), xp: d.xp, color: ["#7c6cff", "#22d3ee", "#d946ef", "#34d399", "#fbbf24", "#fb7185", "#a78bfa", "#38bdf8"][i % 8] })))}
+        </div>`
+      : `""`;
+
     return `
       <section class="hero">
         <div class="reveal"><div class="eyebrow">Learn · Build · Master · Rise</div>
@@ -971,6 +1010,15 @@ Pages.achievements = {
             ${UI.metric("Weekly XP", g.weekly_xp.toLocaleString(), "this week")}
             ${UI.metric("Badges", g.badge_count, `of ${defs.length}`)}
           </div>
+        </div>
+
+        <div class="section-head"><h2 class="h2">Analytics</h2></div>
+        <div class="grid grid-2" style="align-items:start">
+          ${xpGrowthHtml || UI.empty("Complete more activities to see your XP growth chart.")}
+          ${weeklyHtml || UI.empty("No weekly activity data yet.")}
+        </div>
+        <div style="margin-top:18px">
+          ${skillHtml || UI.empty("No skill XP data yet.")}
         </div>
 
         <div class="section-head"><h2 class="h2">Weekly challenges</h2></div>

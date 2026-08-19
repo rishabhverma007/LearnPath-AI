@@ -515,3 +515,67 @@ class TestLeaderboardOptOut:
                 difficulty=course.difficulty,
             )
             assert result["xp_awarded"] > 0
+
+
+class TestAnalytics:
+    """Analytics endpoint: XP growth, weekly activity, skill breakdown."""
+
+    def test_analytics_endpoint(self, engine):
+        from fastapi.testclient import TestClient
+
+        from app.server import app
+
+        learner = make_learner(engine)
+        client = TestClient(app)
+
+        # Award some XP to have data
+        gs = GamificationService(engine.repo)
+        gs.handle_event(learner, "course_completed", "course_1", difficulty=3)
+        gs.handle_event(learner, "assessment_completed", "assess_1", difficulty=2, assessment_score=0.85)
+
+        res = client.get(f"/api/learners/{learner.learner_id}/analytics")
+        assert res.status_code == 200
+        data = res.json()
+        assert "xp_growth" in data
+        assert "weekly_activity" in data
+        assert "skill_breakdown" in data
+        assert len(data["xp_growth"]) >= 1
+        assert len(data["weekly_activity"]) == 7
+        assert len(data["skill_breakdown"]) >= 1
+
+    def test_analytics_empty_learner(self, engine):
+        from fastapi.testclient import TestClient
+
+        from app.server import app
+
+        learner = make_learner(engine)
+        client = TestClient(app)
+
+        # No XP earned yet
+        res = client.get(f"/api/learners/{learner.learner_id}/analytics")
+        assert res.status_code == 200
+        data = res.json()
+        assert data["xp_growth"] == []
+        assert len(data["weekly_activity"]) == 7
+        assert data["skill_breakdown"] == []
+
+    def test_xp_growth_cumulative(self, engine):
+        """XP growth should be monotonically increasing."""
+        from fastapi.testclient import TestClient
+
+        from app.server import app
+
+        learner = make_learner(engine)
+        client = TestClient(app)
+
+        # Award multiple XP events
+        gs = GamificationService(engine.repo)
+        gs.handle_event(learner, "course_completed", "c1", difficulty=3)
+        gs.handle_event(learner, "course_completed", "c2", difficulty=2)
+
+        res = client.get(f"/api/learners/{learner.learner_id}/analytics")
+        data = res.json()
+        growth = data["xp_growth"]
+        if len(growth) >= 2:
+            for i in range(1, len(growth)):
+                assert growth[i]["cumulative_xp"] >= growth[i - 1]["cumulative_xp"]

@@ -545,6 +545,64 @@ def xp_history(learner_id: str, limit: int = 200):
     return {"transactions": _engine().repo.xp_transactions(learner.learner_id, limit=limit)}
 
 
+@app.get("/api/learners/{learner_id}/analytics")
+def gamification_analytics(learner_id: str):
+    """Compute analytics from the XP transaction ledger.
+
+    Returns:
+    - xp_growth: [{date, cumulative_xp}] for line chart
+    - weekly_activity: [{day, xp}] for bar chart (XP by day of week)
+    - skill_breakdown: [{activity_type, xp}] for pie/bar chart
+    """
+    learner = _load_learner_or_404(learner_id)
+    txs = _engine().repo.xp_transactions(learner.learner_id, limit=500)
+    day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    if not txs:
+        return {"xp_growth": [], "weekly_activity": [{"day": d, "xp": 0} for d in day_names], "skill_breakdown": []}
+
+    # 1. XP growth — cumulative over time
+    from collections import defaultdict
+    daily = defaultdict(int)
+    for t in txs:
+        date_str = (t.get("created_at") or "")[:10]
+        if date_str:
+            daily[date_str] += t.get("final_xp", 0)
+    sorted_dates = sorted(daily.keys())
+    xp_growth = []
+    cumulative = 0
+    for d in sorted_dates:
+        cumulative += daily[d]
+        xp_growth.append({"date": d, "cumulative_xp": cumulative})
+
+    # 2. Weekly activity — XP earned by day of week
+    day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    weekly = defaultdict(int)
+    for t in txs:
+        date_str = (t.get("created_at") or "")[:10]
+        if date_str:
+            try:
+                from datetime import date as _date
+                dt = _date.fromisoformat(date_str)
+                weekly[dt.weekday()] += t.get("final_xp", 0)
+            except (ValueError, TypeError):
+                pass
+    weekly_activity = [{"day": day_names[i], "xp": weekly.get(i, 0)} for i in range(7)]
+
+    # 3. Skill breakdown — XP by activity type
+    skill_map = defaultdict(int)
+    for t in txs:
+        atype = (t.get("activity_type") or "other").replace("_", " ")
+        skill_map[atype] += t.get("final_xp", 0)
+    skill_breakdown = [{"activity_type": k, "xp": v} for k, v in skill_map.items()]
+    skill_breakdown.sort(key=lambda x: -x["xp"])
+
+    return {
+        "xp_growth": xp_growth,
+        "weekly_activity": weekly_activity,
+        "skill_breakdown": skill_breakdown,
+    }
+
+
 @app.get("/api/learners/{learner_id}/badges")
 def badges(learner_id: str):
     learner = _load_learner_or_404(learner_id)

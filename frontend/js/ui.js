@@ -235,5 +235,103 @@ const UI = (() => {
     </div>`;
   }
 
-  return { esc, fmtPct, TYPE_ICON, FORMAT_LABEL, SEV, el, metric, badge, chip, tag, bar, card, rating, toast, skeletons, empty, emptyState, setView, radarSVG, gaugeSVG, hBars, xpFX, xpFloat, badgeToast, levelUp };
+  /* ------------------------------ line chart (SVG) ------------------------------ */
+  function lineSVG(data, opts = {}) {
+    // data: [{date, cumulative_xp}] or [{label, value}]
+    const w = opts.width || 400, h = opts.height || 180, pad = { top: 20, right: 20, bottom: 30, left: 50 };
+    const innerW = w - pad.left - pad.right, innerH = h - pad.top - pad.bottom;
+    if (!data || data.length < 2) return "<div class='faint' style='font-size:12px'>Not enough data for chart</div>";
+    const values = data.map((d) => d.cumulative_xp != null ? d.cumulative_xp : d.value);
+    const maxVal = Math.max(...values, 1);
+    const minVal = 0;
+    const range = maxVal - minVal || 1;
+
+    // build points
+    const points = data.map((d, i) => {
+      const x = pad.left + (i / (data.length - 1)) * innerW;
+      const val = d.cumulative_xp != null ? d.cumulative_xp : d.value;
+      const y = pad.top + innerH - ((val - minVal) / range) * innerH;
+      return { x, y, val, label: d.date || d.label || "" };
+    });
+
+    // polyline
+    const polyline = points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+
+    // area fill
+    const areaPath = `M${points[0].x.toFixed(1)},${(pad.top + innerH).toFixed(1)} `
+      + points.map((p) => `L${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")
+      + ` L${points[points.length - 1].x.toFixed(1)},${(pad.top + innerH).toFixed(1)} Z`;
+
+    // grid lines
+    const gridLines = [0, 0.25, 0.5, 0.75, 1].map((f) => {
+      const y = pad.top + innerH - f * innerH;
+      const val = Math.round(minVal + f * range);
+      return `<line x1="${pad.left}" y1="${y.toFixed(1)}" x2="${w - pad.right}" y2="${y.toFixed(1)}" stroke="rgba(148,163,184,0.12)"/>
+        <text x="${pad.left - 8}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="10" fill="#6b7290" font-family="Inter">${val.toLocaleString()}</text>`;
+    }).join("");
+
+    // x-axis labels (show first, middle, last)
+    const xLabels = [0, Math.floor(data.length / 2), data.length - 1].map((i) => {
+      const p = points[i];
+      const lbl = (p.label || "").slice(5); // strip year
+      return `<text x="${p.x.toFixed(1)}" y="${(h - 8).toFixed(1)}" text-anchor="middle" font-size="10" fill="#6b7290" font-family="Inter">${lbl}</text>`;
+    }).join("");
+
+    // dots
+    const dots = points.map((p) =>
+      `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="#7c6cff" stroke="#0a0c16" stroke-width="1.5"/>
+       <title>${p.label}: ${p.val.toLocaleString()} XP</title>`
+    ).join("");
+
+    return `<svg viewBox="0 0 ${w} ${h}" role="img" style="width:100%;max-width:${w}px">
+      <defs><linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="rgba(124,108,255,0.35)"/>
+        <stop offset="100%" stop-color="rgba(124,108,255,0.02)"/>
+      </linearGradient></defs>
+      ${gridLines}
+      <path d="${areaPath}" fill="url(#areaGrad)"/>
+      <polyline points="${polyline}" fill="none" stroke="#7c6cff" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" style="filter:drop-shadow(0 0 8px rgba(124,108,255,0.5))"/>
+      ${dots}
+      ${xLabels}
+    </svg>`;
+  }
+
+  /* ------------------------------ vertical bar chart (SVG) ------------------------------ */
+  function vBarSVG(data, opts = {}) {
+    // data: [{label, xp or value, color?}]
+    const w = opts.width || 400, h = opts.height || 180, pad = { top: 20, right: 16, bottom: 40, left: 50 };
+    const innerW = w - pad.left - pad.right, innerH = h - pad.top - pad.bottom;
+    if (!data || !data.length) return "<div class='faint' style='font-size:12px'>No data</div>";
+    const maxVal = Math.max(...data.map((d) => d.xp || d.value || 0), 1);
+    const barW = Math.min(40, (innerW / data.length) * 0.6);
+    const gap = (innerW - barW * data.length) / (data.length + 1);
+
+    const gridLines = [0, 0.25, 0.5, 0.75, 1].map((f) => {
+      const y = pad.top + innerH - f * innerH;
+      const val = Math.round(f * maxVal);
+      return `<line x1="${pad.left}" y1="${y.toFixed(1)}" x2="${w - pad.right}" y2="${y.toFixed(1)}" stroke="rgba(148,163,184,0.12)"/>
+        <text x="${pad.left - 8}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="10" fill="#6b7290" font-family="Inter">${val.toLocaleString()}</text>`;
+    }).join("");
+
+    const bars = data.map((d, i) => {
+      const val = d.xp || d.value || 0;
+      const barH = (val / maxVal) * innerH;
+      const x = pad.left + gap + i * (barW + gap);
+      const y = pad.top + innerH - barH;
+      const color = d.color || "#7c6cff";
+      return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW}" height="${barH.toFixed(1)}" rx="4" fill="${color}" style="filter:drop-shadow(0 0 8px ${color}66)">
+        <title>${esc(d.label)}: ${val.toLocaleString()} XP</title>
+      </rect>
+      <text x="${(x + barW / 2).toFixed(1)}" y="${(h - pad.bottom + 16).toFixed(1)}" text-anchor="middle" font-size="10" fill="#9aa2bf" font-family="Inter">${esc(d.label)}</text>
+      ${val > 0 ? `<text x="${(x + barW / 2).toFixed(1)}" y="${(y - 6).toFixed(1)}" text-anchor="middle" font-size="9" fill="#9aa2bf" font-family="Inter">${val.toLocaleString()}</text>` : ""}`;
+    }).join("");
+
+    return `<svg viewBox="0 0 ${w} ${h}" role="img" style="width:100%;max-width:${w}px">
+      ${gridLines}
+      <line x1="${pad.left}" y1="${(pad.top + innerH).toFixed(1)}" x2="${w - pad.right}" y2="${(pad.top + innerH).toFixed(1)}" stroke="rgba(148,163,184,0.2)"/>
+      ${bars}
+    </svg>`;
+  }
+
+  return { esc, fmtPct, TYPE_ICON, FORMAT_LABEL, SEV, el, metric, badge, chip, tag, bar, card, rating, toast, skeletons, empty, emptyState, setView, radarSVG, gaugeSVG, hBars, lineSVG, vBarSVG, xpFX, xpFloat, badgeToast, levelUp };
 })();
