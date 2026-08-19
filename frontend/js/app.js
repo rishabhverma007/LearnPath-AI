@@ -1,8 +1,20 @@
-/* LearnPath AI — application shell: router, nav, action dispatch, boot. */
+/* LearnPath AI — application shell: router, page grid, action dispatch, boot. */
 "use strict";
 
-const NAV_ORDER = ["journey", "skills", "recommendations", "coach", "assessments", "dashboard", "achievements", "leaderboard", "career", "settings"];
-const AUTH_PAGES = ["onboarding", ...NAV_ORDER];
+/* Pages that appear as buttons in the page grid (after learner exists). */
+const GRID_PAGES = [
+  { key: "journey",         icon: "🗺️", label: "My Journey",         desc: "Your personalized roadmap — phase by phase, prerequisite-first." },
+  { key: "skills",          icon: "⚡", label: "Skill Intelligence",  desc: "Gaps, radar chart, heatmap and before/after proficiency bars." },
+  { key: "recommendations", icon: "🎯", label: "Recommendations",     desc: "Courses, projects & checks ranked across 8 explainable factors." },
+  { key: "coach",           icon: "💬", label: "AI Coach",            desc: "Ask anything — grounded in your profile, roadmap and gaps." },
+  { key: "assessments",     icon: "🧠", label: "Assessments",         desc: "Knowledge checks that power adaptive remediation." },
+  { key: "dashboard",       icon: "📊", label: "Dashboard",           desc: "Today's mission, weekly planner, progress and analytics." },
+  { key: "career",          icon: "🚀", label: "Career Readiness",    desc: "Readiness index, dimension bars and what-if simulator." },
+  { key: "achievements",    icon: "🏅", label: "Achievements",        desc: "XP, level, badges, streaks and weekly challenges." },
+  { key: "leaderboard",     icon: "🏆", label: "Leaderboard",         desc: "Compare XP, mastery and progress against the cohort." },
+  { key: "settings",        icon: "⚙️", label: "Settings",            desc: "Profile, preferences, skill sliders and system insights." },
+];
+const AUTH_PAGES = ["onboarding", ...GRID_PAGES.map(g => g.key)];
 
 /* Empty-state copy per learner-gated page — shown when no learner exists yet. */
 const EMPTY_STATE = {
@@ -22,40 +34,38 @@ const App = (() => {
   let viewRoot = null;
 
   /* ---------------------------------------------------------------
+     PAGE GRID
+     --------------------------------------------------------------- */
+  function renderPageGrid() {
+    const view = document.getElementById("view");
+    const pageKey = Store.page;
+    view.innerHTML = `
+      <div class="page-grid-header">
+        <h2>Navigate your journey</h2>
+        <p>Pick a section to explore — every page is one click away.</p>
+      </div>
+      <div class="page-grid">
+        ${GRID_PAGES.map(g => `
+          <button class="page-card${pageKey === g.key ? " active-card" : ""}" data-action="goto" data-page="${g.key}">
+            <div class="page-card-icon">${g.icon}</div>
+            <div class="page-card-label">${g.label}</div>
+            <div class="page-card-desc">${g.desc}</div>
+          </button>
+        `).join("")}
+      </div>
+    `;
+    viewRoot = view;
+    Motion.observeReveals(viewRoot);
+  }
+
+  function updatePageTitle() {
+    const p = Pages[Store.page];
+    document.title = `${p ? p.nav.label : "Home"} · LearnPath AI`;
+  }
+
+  /* ---------------------------------------------------------------
      NAVIGATION
      --------------------------------------------------------------- */
-  function buildNav() {
-    const nav = document.getElementById("nav");
-    const items = ["landing", ...(Store.authed ? AUTH_PAGES : ["signin", "signup"])];
-    nav.innerHTML = items.map((key) => {
-      const p = Pages[key];
-      // signed-out: give each auth button its own distinct style
-      if (!Store.authed && key === "signup") {
-        return `<button class="nav-cta" data-action="goto" data-page="signup">${p.nav.label} →</button>`;
-      }
-      if (!Store.authed && key === "signin") {
-        return `<button class="nav-item nav-signin" data-action="goto" data-page="signin">
-          <span class="nav-ico">${p.nav.icon}</span><span>${p.nav.label}</span>
-        </button>`;
-      }
-      return `<button class="nav-item" data-action="goto" data-page="${key}">
-        <span class="nav-ico">${p.nav.icon}</span><span>${p.nav.label}</span>
-      </button>`;
-    }).join("");
-    markNav();
-  }
-
-  function markNav() {
-    document.querySelectorAll(".nav-item").forEach((b) => {
-      b.classList.toggle("active", b.dataset.page === Store.page);
-    });
-    const crumb = document.getElementById("crumb");
-    if (crumb && Pages[Store.page]) {
-      crumb.textContent = `${Pages[Store.page].nav.icon}  ${Pages[Store.page].nav.label.toUpperCase()}`;
-    }
-    document.title = `${Pages[Store.page] ? Pages[Store.page].nav.label : "Home"} · LearnPath AI`;
-  }
-
   async function navigate(page) {
     let target = Pages[page] ? page : "landing";
     // auth gate: app pages require a signed-in user
@@ -66,9 +76,16 @@ const App = (() => {
     if (target === "onboarding") Store.recFilter = null;
 
     await Motion.playCurtain();
-    markNav();
+    updatePageTitle();
 
     const view = document.getElementById("view");
+
+    // If the user has a learner and hits "home" (landing), show the page grid instead
+    if (target === "landing" && Store.authed && Store.learner && Store.roadmap) {
+      renderPageGrid();
+      return;
+    }
+
     view.innerHTML = UI.skeletons(3);
     try {
       let html;
@@ -85,13 +102,19 @@ const App = (() => {
       } else {
         html = await Pages[target].render();
       }
-      viewRoot = UI.setView(html);
+      // Prepend a "back to grid" button for app pages (not landing, onboarding, signin, signup)
+      const showBack = Store.authed && Store.learner && Store.roadmap
+        && !["landing", "onboarding", "signin", "signup"].includes(target);
+      const backBtn = showBack
+        ? `<button class="back-to-grid" data-action="goto" data-page="landing">← Back to all pages</button>`
+        : "";
+      viewRoot = UI.setView(backBtn + html);
       Motion.observeReveals(viewRoot);
       Motion.animateBars(viewRoot);
       if (!needsLearner && Pages[target].mount) Pages[target].mount(viewRoot);
     } catch (err) {
       console.error("render error:", err);
-      view.innerHTML = `<div class="scene"><div class="note" style="margin-top:40px">Something went wrong: ${UI.esc(err.message)}<br><button class="btn btn-ghost btn-sm" style="margin-top:10px" data-action="goto" data-page="dashboard">Back to dashboard</button></div></div>`;
+      view.innerHTML = `<div class="scene"><div class="note" style="margin-top:40px">Something went wrong: ${UI.esc(err.message)}<br><button class="btn btn-ghost btn-sm" style="margin-top:10px" data-action="goto" data-page="landing">← Back to all pages</button></div></div>`;
     }
     window.scrollTo({ top: 0, behavior: "auto" });
   }
@@ -175,8 +198,7 @@ const App = (() => {
         const roadmap = await API.generateRoadmap(learner.learner_id, "balanced");
         Store.roadmap = roadmap;
         renderLearnerChip();
-        buildNav();
-        await navigate("journey");
+        await navigate("landing");
         UI.toast(`Twin created for ${learner.goal_text.slice(0, 50)}…`);
       } catch (err) {
         UI.toast(err.message, 4000);
@@ -226,8 +248,7 @@ const App = (() => {
         const roadmap = await API.generateRoadmap(learner.learner_id, "balanced");
         Store.roadmap = roadmap;
         renderLearnerChip();
-        buildNav();
-        await navigate("journey");
+        await navigate("landing");
       } catch (err) {
         UI.toast(err.message, 4000);
       }
@@ -350,7 +371,6 @@ const App = (() => {
         Store.assessmentResult = result;
         Store.assessmentActive = null;
         Store.recs = null;
-        // LearnPath XP animations (server-computed; never client-submitted)
         if (result.xp) {
           if (result.xp.xp_awarded > 0) UI.xpFloat(result.xp.xp_awarded, btn);
           (result.xp.new_badges || []).forEach(UI.badgeToast);
@@ -447,7 +467,6 @@ const App = (() => {
         }
         UI.toast(optOut ? "Hidden from leaderboards" : "Visible on leaderboards");
       } catch (err) {
-        // revert checkbox on error
         checkbox.checked = !optOut;
         UI.toast(err.message, 4000);
       }
@@ -493,13 +512,11 @@ const App = (() => {
         Store.token = res.token;
         Store.user = res.user;
         Store.guest = true;
-        // fresh guest session — drop any leftover learner
         Store.learnerId = null;
         Store.learner = null;
         Store.roadmap = null;
         Store.chat = [];
         Store.recs = null;
-        buildNav();
         renderLearnerChip();
         UI.toast("Guest mode — explore a persona below. ✨");
         await navigate("onboarding");
@@ -517,13 +534,11 @@ const App = (() => {
         Store.token = res.token;
         Store.user = res.user;
         Store.guest = false;
-        // a fresh account starts clean — drop any leftover demo learner
         Store.learnerId = null;
         Store.learner = null;
         Store.roadmap = null;
         Store.chat = [];
         Store.recs = null;
-        buildNav();
         renderLearnerChip();
         UI.toast(`Welcome aboard, ${res.user.name.split(" ")[0]}! ✨`);
         await navigate("onboarding");
@@ -540,7 +555,6 @@ const App = (() => {
         Store.token = res.token;
         Store.user = res.user;
         await loadLearner();
-        buildNav();
         renderLearnerChip();
         UI.toast(`Welcome back, ${res.user.name.split(" ")[0]}!`);
         await navigate(Store.learner ? (Store.roadmap ? "dashboard" : "journey") : "onboarding");
@@ -558,7 +572,6 @@ const App = (() => {
       Store.roadmap = null;
       Store.chat = [];
       Store.recs = null;
-      buildNav();
       renderLearnerChip();
       UI.toast("Signed out. See you soon!");
       await navigate("landing");
@@ -579,7 +592,6 @@ const App = (() => {
       Store.assessmentResult = null;
       Store.lastGoal = "";
       renderLearnerChip();
-      buildNav();
       await navigate("onboarding");
     },
 
@@ -592,7 +604,6 @@ const App = (() => {
     document.addEventListener("click", (e) => {
       const btn = e.target.closest("[data-action]");
       if (!btn || btn.disabled) return;
-      // data-action="assessment-submit" -> actions.assessmentSubmit
       const key = btn.dataset.action.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
       const action = actions[key];
       if (action) action.call(actions, btn);
@@ -614,7 +625,10 @@ const App = (() => {
       document.getElementById("view").innerHTML = `<div class="scene"><div class="note" style="margin-top:40px">Could not reach the backend — is the server running?<br><span class="mono">${UI.esc(err.message)}</span></div></div>`;
       return;
     }
-    document.getElementById("mode-pill").textContent = Store.meta.llm_mode === "openai" ? "openai provider" : "local engine · offline";
+    // sync mode pill
+    const pillText = (Store.meta && Store.meta.llm_mode === "openai") ? "openai provider" : "local engine · offline";
+    const pill = document.getElementById("mode-pill");
+    if (pill) pill.textContent = pillText;
     // restore session
     if (Store.token) {
       try {
@@ -629,7 +643,6 @@ const App = (() => {
       }
     }
     await refreshLearner();
-    buildNav();
     let start = "landing";
     if (Store.authed) start = Store.learner ? (Store.roadmap ? "dashboard" : "journey") : "onboarding";
     await navigate(start);

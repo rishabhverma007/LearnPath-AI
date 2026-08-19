@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/css/styles.css?v=10" />
+  <link rel="stylesheet" href="/static/css/styles.css?v=12" />
 </head>
 <body>
   <!-- live motion layers -->
@@ -18,25 +18,23 @@
   <div id="cursor" aria-hidden="true"><div class="cursor-dot"></div><div class="cursor-ring"></div></div>
   <div id="curtain" aria-hidden="true"></div>
 
-  <!-- top navigation -->
-  <header class="topnav" id="topnav">
-    <div class="nav-brand" data-action="goto" data-page="landing" role="button" tabindex="0">
+  <!-- top bar — brand + learner info only, NO navigation buttons -->
+  <header class="topbar" id="topbar">
+    <div class="topbar-brand" data-action="goto" data-page="landing" role="button" tabindex="0">
       <div class="brand-logo">LP</div>
       <div class="brand-text">
         <div class="brand-name">LearnPath AI</div>
         <div class="brand-tag">Your goal · Your skills · Your adaptive journey</div>
       </div>
     </div>
-    <nav class="topnav-links" id="nav" aria-label="Primary"></nav>
-    <div class="topnav-right">
+    <div class="topbar-right">
       <span class="mode-pill" id="mode-pill">local engine</span>
       <div class="learner-chip" id="learner-chip" hidden></div>
-      <button class="ghost-btn" data-action="new-demo" hidden id="new-demo-btn" title="Start a fresh demo learner">↺</button>
+      <button class="ghost-btn" data-action="new-demo" hidden id="new-demo-btn" title="Start a fresh demo learner">↺ Start Over</button>
     </div>
   </header>
 
   <main class="main">
-    <div class="crumb" id="crumb">LearnPath AI</div>
     <div id="view" class="view"></div>
     <footer class="footer">
       <span>LearnPath AI — not a course recommender. An adaptive learning companion.</span>
@@ -50,6 +48,6 @@
   <script src="/static/js/motion.js?v=9"></script>
   <script src="/static/js/ui.js?v=9"></script>
   <script src="/static/js/pages.js?v=11"></script>
-  <script src="/static/js/app.js?v=10"></script>
+  <script src="/static/js/app.js?v=11"></script>
 </body>
 </html>

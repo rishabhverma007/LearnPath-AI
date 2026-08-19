@@ -85,7 +85,7 @@ algorithms.
 ```mermaid
 flowchart TB
     subgraph Client["Frontend — Cinematic SPA (vanilla JS)"]
-        UI[9 Views + Router] --> API[api.js client]
+        UI[Page Grid + 10 Views + Router] --> API[api.js client]
         MOTION[Canvas motion layer · cursor · tilt · curtain]
     end
     subgraph Server["FastAPI — app/server.py (single process)"]
@@ -132,13 +132,13 @@ app/
 ├── data/                   # Catalogue: skills, roles, courses, projects, resources, assessments
 ├── database/               # SQLite repository + Learner Digital Twin model
 ├── services/               # engine (composition root) + learner/roadmap/recommendation/assessment services
-├── tests/                  # 109 pytest tests incl. end-to-end FastAPI demo flow + gamification + opt-out suite
+├── tests/                  # 112 pytest tests incl. end-to-end FastAPI demo flow + gamification + opt-out suite
 └── frontend/               # Cinematic SPA (zero frameworks):
     ├── index.html          #   shell + motion layers (universe canvas, grain, vignette, cursor)
     ├── css/styles.css      #   deep-space design system + glassmorphism
     └── js/                 #   api.js (client) · motion.js (aurora/starfield/cursor/tilt/curtain)
                             #   ui.js (charts + XP/badge FX) · pages.js (13 views incl. landing, auth, Achievements, Leaderboard)
-                            #   app.js (router/nav/boot)
+                            #   app.js (router/page grid/boot)
 ```
 
 **AI architecture (hybrid):**
@@ -350,19 +350,20 @@ Data Scientist, Cybersecurity Analyst, Cloud Engineer.
 
 Capture from the running app. The recommended shot list for a submission deck:
 
-1. Onboarding hero + demo personas
-2. "AI Understanding" extraction panel
-3. Skill Intelligence radar + gap heatmap + before/after bars
-4. My Learning Journey roadmap timeline (8 phases, week ranges, statuses)
-5. Recommendations with an expanded "Why this?" panel
-6. Assessment result showing weak concepts + "Your path was updated" banner
-7. AI Coach conversation
-8. Progress Dashboard (today's mission, time planner, analytics)
-9. Career Readiness gauge + dimension bars
-10. What-If simulator
-11. Dashboard gamification card (level, XP bar, rank, streak, weekly XP)
-12. Achievements page (badges, weekly challenges, XP history)
-13. Leaderboard (medals, scope tabs: Global / This Week / This Month / Mastery / My Skill)
+1. Page Grid — clean standalone buttons for each section (no sidebar, no top nav bar)
+2. Onboarding hero + demo personas
+3. "AI Understanding" extraction panel
+4. Skill Intelligence radar + gap heatmap + before/after bars
+5. My Learning Journey roadmap timeline (8 phases, week ranges, statuses)
+6. Recommendations with an expanded "Why this?" panel
+7. Assessment result showing weak concepts + "Your path was updated" banner
+8. AI Coach conversation
+9. Progress Dashboard (today's mission, time planner, analytics)
+10. Career Readiness gauge + dimension bars
+11. What-If simulator
+12. Dashboard gamification card (level, XP bar, rank, streak, weekly XP)
+13. Achievements page (badges, weekly challenges, XP history)
+14. Leaderboard (medals, scope tabs: Global / This Week / This Month / Mastery / My Skill)
 
 ## 16. Evaluation Methodology
 
@@ -377,7 +378,7 @@ The evaluator view lives in **Settings → System insights**.
 ## 17. Testing
 
 ```bash
-python -m pytest tests/ -q        # 109 tests
+python -m pytest tests/ -q        # 112 tests
 ```
 
 Coverage: profile parsing, skill normalization, recommendation ranking + explanations,
