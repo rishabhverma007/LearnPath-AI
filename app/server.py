@@ -10,7 +10,8 @@ from pathlib import Path
 
 from fastapi import Body, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from contextlib import asynccontextmanager
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import config
@@ -26,17 +27,9 @@ log = get_logger("server")
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
-app = FastAPI(title="LearnPath AI", version="2.0.0")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
-
-@app.on_event("startup")
-def _seed_gamification():
+@asynccontextmanager
+async def lifespan(app):
     """Seed demo leaderboard rows + weekly challenges once per database."""
     try:
         from app.ml.demo_seed import seed_demo_gamification, seed_weekly_challenges
@@ -47,6 +40,19 @@ def _seed_gamification():
             log.info("Seeded %d demo learners for the leaderboard", n)
     except Exception as exc:  # noqa: BLE001 - seeding must never block startup
         log.warning("gamification seeding skipped: %s", exc)
+    yield
+
+
+app = FastAPI(title="LearnPath AI", version="2.0.0", lifespan=lifespan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+
 
 # ----------------------------------------------------------------------
 # Composition
