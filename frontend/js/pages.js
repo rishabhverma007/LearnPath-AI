@@ -767,6 +767,12 @@ Pages.settings = {
   async render() {
     const learner = await loadLearner();
     const meta = await bootMeta();
+    // Load gamification state for opt-out toggle
+    let gam = null;
+    try {
+      gam = await API.gamification(learner.learner_id);
+      Store.gamification = gam;
+    } catch (_) { /* gamification optional */ }
     const roleOpts = Object.values(meta.roles || {}).map((r) =>
       `<option value="${r.role_id}" ${r.role_id === learner.target_role ? "selected" : ""}>${ROLE_EMOJI[r.role_id] || ""} ${UI.esc(r.title)}</option>`).join("");
     const expSeg = (["beginner", "intermediate", "advanced"]).map((l) =>
@@ -838,6 +844,23 @@ Pages.settings = {
         </div>
       </div>
       <div class="divider"></div>
+      <div class="section-head"><h2 class="h2">Leaderboard Privacy</h2></div>
+      <div class="glass reveal" style="padding:22px">
+        <div class="card-title">Leaderboard Visibility</div>
+        <div class="card-sub">Control whether your name and stats appear on public leaderboards.</div>
+        <div style="height:12px"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px;background:rgba(255,255,255,0.02);border-radius:12px;border:1px solid rgba(255,255,255,0.06)">
+          <div>
+            <div style="font-weight:600;font-size:14px">Hide from leaderboards</div>
+            <div style="font-size:12.5px;color:var(--ink-dim);margin-top:2px">Your name and XP won't appear on public leaderboards, but you'll keep all your progress and achievements.</div>
+          </div>
+          <label class="switch" style="position:relative;display:inline-block;width:48px;height:26px;flex-shrink:0">
+            <input type="checkbox" id="opt-out-toggle" ${gam && gam.leaderboard_opt_out ? "checked" : ""} style="opacity:0;width:0;height:0">
+            <span class="slider" style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,0.1);transition:0.3s;border-radius:13px;border:1px solid rgba(255,255,255,0.1)"><span style="position:absolute;content:'';height:20px;width:20px;left:3px;bottom:2px;background:white;border-radius:50%;transition:0.3s"></span></span>
+          </label>
+        </div>
+      </div>
+      <div class="divider"></div>
       <div class="note">Raw twin JSON lives in <span class="mono">data/learnpath.db</span> (SQLite). Resetting starts a fresh demo learner.</div>
       <button class="btn btn-ghost" data-action="new-demo">↺ Reset demo & start over</button>`;
   },
@@ -848,6 +871,13 @@ Pages.settings = {
         if (v) v.textContent = s.value + "%";
       });
     });
+    // leaderboard opt-out toggle
+    const toggle = document.getElementById("opt-out-toggle");
+    if (toggle) {
+      toggle.addEventListener("change", (e) => {
+        App.actions.toggleLeaderboardOptOut();
+      });
+    }
   },
 };
 /* ================================================================

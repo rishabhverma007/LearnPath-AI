@@ -885,6 +885,18 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
   .footer { flex-direction: column; text-align: center; }
 }
 
+/* switch toggle */
+.switch input:checked + .slider {
+  background: var(--brand);
+  border-color: var(--brand);
+}
+.switch input:checked + .slider > span {
+  transform: translateX(22px);
+}
+.switch input:focus-visible + .slider {
+  box-shadow: 0 0 0 3px rgba(124, 108, 255, 0.4);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

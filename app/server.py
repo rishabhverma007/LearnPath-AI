@@ -596,7 +596,11 @@ def leaderboard(learner_id: str = "", scope: str = "global"):
         skill_id = min(current.known_skills.items(), key=lambda kv: kv[1])[0] if current.known_skills else ""
         skill_rows = []
         gam_lookup = {r["learner_id"]: r for r in rows}
+        # Build set of opted-out learner IDs
+        opted_out = {r["learner_id"] for r in rows if r.get("leaderboard_opt_out")}
         for l in eng.repo.list_learners():
+            if l.learner_id in opted_out:
+                continue
             prof = l.proficiency(skill_id)
             if prof > 0:
                 name = _learner_display_name(eng, l)
@@ -612,7 +616,7 @@ def leaderboard(learner_id: str = "", scope: str = "global"):
 
     if scope == "cohort":
         cohort = set(eng.repo.learner_ids_in_cohort(learner_id or ""))
-        rows = [r for r in rows if r["learner_id"] in cohort]
+        rows = [r for r in rows if r["learner_id"] in cohort and not r.get("leaderboard_opt_out")]
 
     if scope == "mastery":
         mastered = {}
@@ -626,7 +630,11 @@ def leaderboard(learner_id: str = "", scope: str = "global"):
                 rd = compute_readiness(l, eng.catalog)
                 readiness[l.learner_id] = round(rd.overall * 100, 1) if rd else 0.0
         out = []
+        # Filter out opted-out learners from mastery board
+        opted_out = {r["learner_id"] for r in rows if r.get("leaderboard_opt_out")}
         for r in rows:
+            if r["learner_id"] in opted_out:
+                continue
             out.append({"learner_id": r["learner_id"], "name": r["name"],
                         "level": r.get("level") or gam_level_for(r["total_xp"]),
                         "skills_mastered": mastered.get(r["learner_id"], 0),
@@ -685,6 +693,17 @@ def complete_mission(learner_id: str):
         learner, "daily_mission_completed", activity_id=f"mission_{today}"
     )
     return result
+
+
+@app.put("/api/learners/{learner_id}/settings/leaderboard-opt-out")
+def leaderboard_opt_out(learner_id: str, payload: dict = Body(...)):
+    """Toggle leaderboard visibility for the learner."""
+    learner = _load_learner_or_404(learner_id)
+    opt_out = 1 if payload.get("opt_out") else 0
+    _engine().repo.upsert_gamification(learner.learner_id, {
+        "leaderboard_opt_out": opt_out,
+    })
+    return {"ok": True, "leaderboard_opt_out": bool(opt_out)}
 
 
 def gam_level_for(xp: int) -> int:

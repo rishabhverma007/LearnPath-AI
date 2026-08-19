@@ -399,3 +399,119 @@ class TestApi:
         # duplicate: second claim same day = 0 XP
         res2 = client.post(f"/api/learners/{learner.learner_id}/mission/complete")
         assert res2.json()["xp_awarded"] == 0
+
+
+class TestLeaderboardOptOut:
+    """Leaderboard opt-out: learners can hide their name/stats from public leaderboards."""
+
+    def test_opt_out_endpoint(self, engine):
+        from fastapi.testclient import TestClient
+
+        from app.server import app
+
+        learner = make_learner(engine)
+        client = TestClient(app)
+
+        # Opt out
+        res = client.put(
+            f"/api/learners/{learner.learner_id}/settings/leaderboard-opt-out",
+            json={"opt_out": True},
+        )
+        assert res.status_code == 200
+        assert res.json()["leaderboard_opt_out"] is True
+
+        # Verify the state is persisted in the DB
+        row = engine.repo.get_gamification(learner.learner_id)
+        assert row is not None
+        assert row["leaderboard_opt_out"] == 1
+
+    def test_opt_in_restores_visibility(self, engine):
+        from fastapi.testclient import TestClient
+
+        from app.server import app
+
+        learner = make_learner(engine)
+        client = TestClient(app)
+
+        # Opt out then opt back in
+        client.put(
+            f"/api/learners/{learner.learner_id}/settings/leaderboard-opt-out",
+            json={"opt_out": True},
+        )
+        res = client.put(
+            f"/api/learners/{learner.learner_id}/settings/leaderboard-opt-out",
+            json={"opt_out": False},
+        )
+        assert res.json()["leaderboard_opt_out"] is False
+
+        # Verify persisted state
+        row = engine.repo.get_gamification(learner.learner_id)
+        assert row["leaderboard_opt_out"] == 0
+
+    def test_opt_out_filters_from_all_scopes(self, engine):
+        """Opted-out learners should not appear in any leaderboard scope."""
+        from fastapi.testclient import TestClient
+
+        from app.server import app
+
+        learner = make_learner(engine)
+        # Create a unique gamification row with high XP so the learner is
+        # guaranteed to be in the top of the leaderboard (avoids page-size issues)
+        engine.repo.upsert_gamification(learner.learner_id, {
+            "total_xp": 999_999, "weekly_xp": 999_999, "monthly_xp": 999_999,
+            "current_streak": 30, "longest_streak": 30,
+            "last_learning_date": gam.now_iso(),
+            "rank": "Master", "level": 10,
+        })
+        client = TestClient(app)
+
+        # Verify the learner IS on the leaderboard before opt-out
+        res = client.get(f"/api/leaderboard?learner_id={learner.learner_id}&scope=global")
+        assert res.status_code == 200
+        learner_ids = [r["learner_id"] for r in res.json()["rows"]]
+        assert learner.learner_id in learner_ids, "Pre-condition: learner should be on leaderboard"
+
+        # Opt out
+        client.put(
+            f"/api/learners/{learner.learner_id}/settings/leaderboard-opt-out",
+            json={"opt_out": True},
+        )
+
+        for scope in ["global", "weekly", "monthly", "mastery"]:
+            res = client.get(f"/api/leaderboard?learner_id={learner.learner_id}&scope={scope}")
+            assert res.status_code == 200
+            rows = res.json()["rows"]
+            learner_ids = [r.get("learner_id") for r in rows]
+            assert learner.learner_id not in learner_ids, f"Learner visible on {scope} after opt-out"
+
+    def test_xp_still_accumulates_after_opt_out(self, engine):
+        """Opting out of the leaderboard should not stop XP accrual."""
+        from fastapi.testclient import TestClient
+
+        from app.server import app
+
+        learner = make_learner(engine)
+        client = TestClient(app)
+
+        # Opt out
+        client.put(
+            f"/api/learners/{learner.learner_id}/settings/leaderboard-opt-out",
+            json={"opt_out": True},
+        )
+
+        # Complete a course — XP should still be awarded
+        from app.services.learner_service import LearnerService
+
+        eng = get_engine()
+        courses = list(eng.catalog.courses.values())
+        if courses:
+            course = courses[0]
+            LearnerService(eng.catalog, eng.repo).mark_item_complete(
+                learner, "course", course.course_id,
+            )
+            gs = GamificationService(eng.repo)
+            result = gs.handle_event(
+                learner, "course_completed", course.course_id,
+                difficulty=course.difficulty,
+            )
+            assert result["xp_awarded"] > 0

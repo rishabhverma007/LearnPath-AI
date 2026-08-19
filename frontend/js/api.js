@@ -78,6 +78,7 @@ const API = {
   challenges(id) { return this.get(`/api/challenges/current?learner_id=${id}`); },
   claimChallenge(learnerId, challengeId) { return this.post(`/api/challenges/${challengeId}/claim`, { learner_id: learnerId }); },
   completeMission(id) { return this.post(`/api/learners/${id}/mission/complete`, {}); },
+  setLeaderboardOptOut(id, optOut) { return this.put(`/api/learners/${id}/settings/leaderboard-opt-out`, { opt_out: optOut }); },
   insights(id) { return this.get(`/api/learners/${id}/insights`); },
   sessionMissed(id) { return this.post(`/api/learners/${id}/session-missed`, {}); },
 };

@@ -77,7 +77,7 @@ algorithms.
 | **What-If Simulator** | Switch target role → see transferable vs additional skills and extra time |
 | **Micro-learning** | "Learn this in 10 minutes" lessons for weak concepts; AI project generator |
 | **LearnPath XP** | Outcome-based gamification: XP ledger, levels, ranks, streaks, badges, weekly challenges |
-| **Leaderboards** | Fair All-Time / Weekly / Monthly / Skill / Mastery boards — weekly & monthly reset so new learners can compete |
+| **Leaderboards** | Fair All-Time / Weekly / Monthly / Skill / Mastery boards — weekly & monthly reset so new learners can compete; opt-out privacy toggle in Settings |
 | **Reliability** | Offline-first: full local fallback for LLM & embeddings; schema validation; graceful failures |
 
 ## 4. Architecture
@@ -132,7 +132,7 @@ app/
 ├── data/                   # Catalogue: skills, roles, courses, projects, resources, assessments
 ├── database/               # SQLite repository + Learner Digital Twin model
 ├── services/               # engine (composition root) + learner/roadmap/recommendation/assessment services
-├── tests/                  # 105 pytest tests incl. end-to-end FastAPI demo flow + gamification suite
+├── tests/                  # 109 pytest tests incl. end-to-end FastAPI demo flow + gamification + opt-out suite
 └── frontend/               # Cinematic SPA (zero frameworks):
     ├── index.html          #   shell + motion layers (universe canvas, grain, vignette, cursor)
     ├── css/styles.css      #   deep-space design system + glassmorphism
@@ -377,7 +377,7 @@ The evaluator view lives in **Settings → System insights**.
 ## 17. Testing
 
 ```bash
-python -m pytest tests/ -q        # 105 tests
+python -m pytest tests/ -q        # 109 tests
 ```
 
 Coverage: profile parsing, skill normalization, recommendation ranking + explanations,
@@ -430,7 +430,8 @@ exposes a thin JSON API over the services while `frontend/` renders every page.
 `GET .../career` · `POST .../whatif` · `POST .../feedback` · `GET .../insights` ·
 `GET .../gamification` · `GET .../xp-history` · `GET .../badges` · `GET .../streak` ·
 `GET /api/leaderboard?scope=…` · `GET /api/challenges/current` ·
-`POST /api/challenges/{id}/claim` · `POST .../mission/complete`.
+`POST /api/challenges/{id}/claim` · `POST .../mission/complete` ·
+`PUT .../settings/leaderboard-opt-out` (toggle leaderboard visibility).
 
 ## 21. Team
 

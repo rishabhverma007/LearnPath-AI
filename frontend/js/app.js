@@ -433,6 +433,26 @@ const App = (() => {
       } catch (err) { UI.toast(err.message, 4000); }
     },
 
+    /* --- leaderboard privacy --- */
+    async toggleLeaderboardOptOut(btn) {
+      const l = Store.learner;
+      if (!l) return;
+      const checkbox = document.getElementById("opt-out-toggle");
+      if (!checkbox) return;
+      const optOut = checkbox.checked;
+      try {
+        await API.setLeaderboardOptOut(l.learner_id, optOut);
+        if (Store.gamification) {
+          Store.gamification.leaderboard_opt_out = optOut ? 1 : 0;
+        }
+        UI.toast(optOut ? "Hidden from leaderboards" : "Visible on leaderboards");
+      } catch (err) {
+        // revert checkbox on error
+        checkbox.checked = !optOut;
+        UI.toast(err.message, 4000);
+      }
+    },
+
     /* --- gamification --- */
     async lbScope(btn) {
       Store.leaderboardScope = btn.dataset.value;
